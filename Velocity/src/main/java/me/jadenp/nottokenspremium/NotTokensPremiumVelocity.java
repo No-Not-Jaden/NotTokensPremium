@@ -1,7 +1,6 @@
 package me.jadenp.nottokenspremium;
 
 import com.google.inject.Inject;
-import com.velocitypowered.api.command.BrigadierCommand;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
@@ -10,7 +9,6 @@ import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import me.jadenp.nottokenspremium.TokensCommand;
 import org.slf4j.Logger;
 
 import java.nio.file.Path;
@@ -21,14 +19,14 @@ import java.nio.file.Path;
         version = "1.0",
         authors = {"Not_Jaden"}
 )
-public class NotTokensPremium {
+public class NotTokensPremiumVelocity {
 
     private Logger logger;
     private final Path dataDirectory;
     private final ProxyServer proxy;
 
     @Inject
-    public NotTokensPremium(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
+    public NotTokensPremiumVelocity(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
         this.proxy = proxy;
         this.logger = logger;
         this.dataDirectory = dataDirectory;

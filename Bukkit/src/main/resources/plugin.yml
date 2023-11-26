@@ -1,9 +1,9 @@
 name: NotTokensPremium
 version: ${project.version}
-main: me.jadenp.nottokens.NotTokens
-api-version: 1.13
+main: me.jadenp.nottokenspremium.NotTokens
+api-version: 1.8
 authors: [ Not_Jaden ]
-description: A simple tokens system
+description: You get a token, and you get a tokens; you all get tokens
 softdepend:
   - PlaceholderAPI
 commands:

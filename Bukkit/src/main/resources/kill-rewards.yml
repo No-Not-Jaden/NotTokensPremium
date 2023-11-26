@@ -1,0 +1,50 @@
+# Tokens will be rewarded for killing mobs
+enabled: false
+all-mobs:
+  enabled: false
+  amount: 1 # 1 token if rewarded
+  rate: 0.1 # 0.1 is a 10% reward chance
+# manually adding mobs overrides all-mobs rate and amount
+# you can delete these if you don't want kill rewards to be different for these mobs
+zombie: # entity type from https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
+  amount: 1
+  rate: 0.1
+skeleton:
+  amount: 1
+  rate: 0.1
+spider:
+  amount: 1
+  rate: 0.1
+witch:
+  amount: 3
+  rate: 0.1
+creeper:
+  amount: 1
+  rate: 0.1
+wither:
+  amount: 25
+  rate: 0.1
+ender_dragon:
+  amount: 25
+  rate: 0.1
+elder_guardian:
+  amount: 25
+  rate: 0.1
+iron_golem:
+  amount: 5
+  rate: 0.1
+wither_skeleton:
+  amount: 2
+  rate: 0.1
+cave_spider:
+  amount: 1
+  rate: 0.1
+drowned:
+  amount: 2
+  rate: 0.1
+blaze:
+  amount: 1
+  rate: 0.1
+zombified_piglin:
+  amount: 1
+  rate: 0.1

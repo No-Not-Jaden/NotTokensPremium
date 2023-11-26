@@ -1,6 +1,8 @@
-package me.jadenp.nottokenspremium;
+package me.jadenp.nottokenspremium.Configuration;
 
 import me.clip.placeholderapi.PlaceholderAPI;
+import me.jadenp.nottokenspremium.NotTokensPremium;
+import me.jadenp.nottokenspremium.NumberFormatting;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;

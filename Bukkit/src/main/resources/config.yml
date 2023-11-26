@@ -1,0 +1,45 @@
+
+# condense the tokens notifications to one message per given seconds
+# time in seconds (-1 to disable)
+condense-spam: 30
+# allow players to have negative tokens
+negative-tokens: false
+# a list of players that are excluded from /tokens top
+# not case-sensitive
+leaderboard-exclusion:
+  - Not_Jaden
+# formatting of large numbers
+number-formatting:
+  # Same as essentialsX config
+  # For 1.234,50 use de-DE
+  # For 1,234.50 use en-US
+  # For 1'234,50 use fr-ch
+  format-locale: en-US
+  # pattern for currency to be displayed - symbols are only placeholders, if you want to change the symbols, change format-locale
+  pattern: '#,###.##'
+  use-divisions: true
+  # makes the number smaller and adds a suffix ex: 1000 = 1K | 1234 = 1.23K | 5467900 = 5.47M
+  divisions:
+    # the division and suffix
+    1000: K
+    1000000: M
+    1000000000: B
+    1000000000000: T
+
+# MySQL connection - you don't have to change anything if you don't want to use it
+# must restart your server for MySQL changes to take effect
+database:
+  host: localhost
+  port: 3306
+  database: db
+  user: username
+  password: pass
+  use-ssl: false
+  # automatically move data stored locally to the MySQL database when one connects
+  migrate-local-data: true
+  # automatically try to connect to the database if a connection was lost
+  auto-connect: false
+
+# you do not need to worry about this
+# whether the old NotTokens config has been adapted to this one
+has-adapted: false
