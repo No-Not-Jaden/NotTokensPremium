@@ -1,0 +1,23 @@
+name: NotTokensPremium
+version: ${project.version}
+main: me.jadenp.nottokens.NotTokens
+api-version: 1.13
+authors: [ Not_Jaden ]
+description: A simple tokens system
+softdepend:
+  - PlaceholderAPI
+commands:
+  token:
+    usage: /token
+    description: to add and remove tokens
+    aliases:
+      - tokens
+      - nottokens
+      - ntokens
+permissions:
+  nottokens.admin:
+    description: ability to add and remove tokens
+    default: op
+  nottokens.top:
+    description: see who has the most tokens
+    default: true
