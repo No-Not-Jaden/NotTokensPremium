@@ -108,7 +108,9 @@ public class TokenManager {
      * @param amount Token change amount
      */
     public static void editTokensSilently(UUID uuid, double amount) {
-        currentServerTokens.put(uuid, getTokens(uuid) + amount);
+        double newTokens = getTokens(uuid) + amount;
+        currentServerTokens.put(uuid, newTokens);
+        TransactionLogs.log(LoggedPlayers.getPlayerName(uuid) + " is having tokens updated from the proxy. (" + NumberFormatting.formatNumber(amount) + ") Total: " +  NumberFormatting.formatNumber(newTokens));
     }
 
     public static double getTokens(UUID uuid) {
@@ -162,7 +164,10 @@ public class TokenManager {
         tokenTransmissionTask = new BukkitRunnable() {
             @Override
             public void run() {
-
+                if (tokenTransmissionQueue.isEmpty())
+                    return;
+                if (ProxyMessaging.sendServerTokenUpdate(tokenTransmissionQueue))
+                    tokenTransmissionQueue.clear();
             }
         }.runTaskTimerAsynchronously(NotTokensPremium.getInstance(), 50, 21);
     }

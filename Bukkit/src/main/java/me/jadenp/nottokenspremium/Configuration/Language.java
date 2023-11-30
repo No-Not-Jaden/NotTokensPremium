@@ -33,9 +33,7 @@ public class Language {
     public static String otherTokens;
     public static String adminGiveAll;
     public static String insufficientTokens;
-
-
-
+    public static String unknownAmount;
 
     public static void loadLanguageOptions(){
         papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
@@ -63,6 +61,7 @@ public class Language {
         otherTokens = configuration.getString("other-tokens");
         adminGiveAll = configuration.getString("admin-give-all");
         insufficientTokens = configuration.getString("insufficient-tokens");
+        unknownAmount = configuration.getString("unknown-amount");
 
     }
 
@@ -73,13 +72,25 @@ public class Language {
     }
 
     public static String parse(String text, OfflinePlayer player) {
-        if (papiEnabled)
-            text = PlaceholderAPI.setPlaceholders(player, text);
-        if (player.getName() != null) {
+        if (player != null && player.getName() != null) {
             text = text.replaceAll("\\{player}", Matcher.quoteReplacement(player.getName()));
             text = text.replaceAll("\\{sender}", Matcher.quoteReplacement(player.getName()));
         }
+        if (papiEnabled)
+            text = PlaceholderAPI.setPlaceholders(player, text);
         return parse(text);
+    }
+
+    public static String parse(String text, String replacement, OfflinePlayer player) {
+        text = text.replaceAll("\\{player}", Matcher.quoteReplacement(replacement));
+        text = text.replaceAll("\\{sender}", Matcher.quoteReplacement(replacement));
+        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(replacement));
+        return parse(text, player);
+    }
+
+    public static String parse(String text, String replacement, double amount, OfflinePlayer player) {
+        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount)));
+        return parse(text, replacement, player);
     }
 
     public static String parse(String text, double amount, OfflinePlayer player) {

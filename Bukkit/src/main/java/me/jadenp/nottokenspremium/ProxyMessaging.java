@@ -23,54 +23,82 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
             return;
         ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
         String subchannel = in.readUTF();
-        if (subchannel.equals("PlayerList")) {
-            String server = in.readUTF(); // this is currently not used but could be in the future
-            String playerList = in.readUTF(); // CSV (Comma-Separated Values)
-            String[] splitList = playerList.split(",");
-            // send them over to LoggedPlayers
-            LoggedPlayers.receiveNetworkPlayers(List.of(splitList));
-        } else if (subchannel.equals("LogPlayer")) {
-            short len = in.readShort();
-            byte[] msgbytes = new byte[len];
-            in.readFully(msgbytes);
+        switch (subchannel) {
+            case "PlayerList":
+                String server = in.readUTF(); // this is currently not used but could be in the future
 
-            DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-            try {
-                String playerName = msgIn.readUTF();
-                String uuid = msgIn.readUTF();
+                String playerList = in.readUTF(); // CSV (Comma-Separated Values)
+
+                String[] splitList = playerList.split(",");
+                // send them over to LoggedPlayers
+                LoggedPlayers.receiveNetworkPlayers(List.of(splitList));
+                break;
+            case "LogPlayer": {
+                short len = in.readShort();
+                byte[] msgbytes = new byte[len];
+                in.readFully(msgbytes);
+
+                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
                 try {
-                    LoggedPlayers.logPlayer(playerName, UUID.fromString(uuid));
-                } catch (IllegalArgumentException e) {
-                    Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + playerName + ")");
+                    String playerName = msgIn.readUTF();
+                    String uuid = msgIn.readUTF();
+                    try {
+                        LoggedPlayers.logPlayer(playerName, UUID.fromString(uuid));
+                    } catch (IllegalArgumentException e) {
+                        Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + playerName + ")");
+                    }
+                } catch (IOException e) {
+                    Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                    Bukkit.getLogger().warning(e.toString());
                 }
-            } catch (IOException e) {
-                Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
-                Bukkit.getLogger().warning(e.toString());
+                break;
             }
-        } else if (subchannel.equals("ServerTokenMessage")) {
-            short len = in.readShort();
-            byte[] msgbytes = new byte[len];
-            in.readFully(msgbytes);
+            case "ServerTokenMessage": {
+                short len = in.readShort();
+                byte[] msgbytes = new byte[len];
+                in.readFully(msgbytes);
 
-            DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-
-        } else if (subchannel.equals("PlayerTokenMessage")) {
-            short len = in.readShort();
-            byte[] msgbytes = new byte[len];
-            in.readFully(msgbytes);
-
-            DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-            try {
-                String uuid = msgIn.readUTF();
-                double tokenChange = msgIn.readDouble();
-                try {
-                    TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
-                } catch (IllegalArgumentException e) {
-                    Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                int maxReceive = 200;
+                while (maxReceive > 0) {
+                    try {
+                        String uuid = msgIn.readUTF();
+                        double tokenChange = msgIn.readDouble();
+                        try {
+                            TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
+                        } catch (IllegalArgumentException e) {
+                            Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                        }
+                    } catch (EOFException e) {
+                        Bukkit.getLogger().info("Reached End");
+                        break;
+                    } catch (IOException e) {
+                        Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                        Bukkit.getLogger().warning(e.toString());
+                    }
+                    maxReceive--;
                 }
-            } catch (IOException e) {
-                Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
-                Bukkit.getLogger().warning(e.toString());
+                break;
+            }
+            case "PlayerTokenMessage": {
+                short len = in.readShort();
+                byte[] msgbytes = new byte[len];
+                in.readFully(msgbytes);
+
+                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                try {
+                    String uuid = msgIn.readUTF();
+                    double tokenChange = msgIn.readDouble();
+                    try {
+                        TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
+                    } catch (IllegalArgumentException e) {
+                        Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                    }
+                } catch (IOException e) {
+                    Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                    Bukkit.getLogger().warning(e.toString());
+                }
+                break;
             }
         }
     }
@@ -129,7 +157,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      * @param tokenChange Tokens to be changed from the player's balance
      * @return True if the message was successful
      */
-    public boolean sendPlayerTokenUpdate(Player player, double tokenChange) {
+    public static boolean sendPlayerTokenUpdate(Player player, double tokenChange) {
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(player.getUniqueId().toString(), tokenChange), "PlayerTokenUpdate");
             return sendMessage("BungeeCord", message, player);
@@ -145,7 +173,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      * @param playerTokens Map of uuid of player and amount of tokens to be changed
      * @return True if the message was successful
      */
-    public boolean sendServerTokenUpdate(Map<UUID, Double> playerTokens) {
+    public static boolean sendServerTokenUpdate(Map<UUID, Double> playerTokens) {
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(playerTokens), "ServerTokenUpdate");
             return sendMessage("BungeeCord", message);

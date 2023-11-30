@@ -6,6 +6,7 @@ authors: [ Not_Jaden ]
 description: You get a token, and you get a tokens; you all get tokens
 softdepend:
   - PlaceholderAPI
+  - Skript
 commands:
   token:
     usage: /token
@@ -16,8 +17,28 @@ commands:
       - ntokens
 permissions:
   nottokens.admin:
-    description: ability to add and remove tokens
+    description: Admin commands
     default: op
+    children:
+      - nottokens.edit
+      - nottokens.player
+      - nottokens.viewother
+  nottokens.edit:
+    description: Edit players' tokens
+  nottokens.viewother:
+    description: View other players' tokens
+  nottokens.player:
+    description: Player commands
+    children:
+      - nottokens.top
+      - nottokens.transfer
+      - nottokens.balance
   nottokens.top:
-    description: see who has the most tokens
+    description: See who has the most tokens
+    default: true
+  nottokens.transfer:
+    description: Transfer your tokens to another player
+    default: true
+  nottokens.balance:
+    description: Check your token balance
     default: true

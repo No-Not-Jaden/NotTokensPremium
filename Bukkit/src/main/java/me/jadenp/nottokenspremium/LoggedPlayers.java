@@ -8,8 +8,11 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class LoggedPlayers implements Listener {
 
@@ -50,7 +53,7 @@ public class LoggedPlayers implements Listener {
      * @param uuid UUID of player
      * @return Name of player
      */
-    public static String getPlayerName(UUID uuid) {
+    public static @Nonnull String getPlayerName(UUID uuid) {
         if (UUIDNameMap.containsKey(uuid))
             return UUIDNameMap.get(uuid);
         OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
@@ -64,7 +67,7 @@ public class LoggedPlayers implements Listener {
      * @param name Name of the player
      * @return OfflinePlayer with the name or null if no player could be found
      */
-    public static OfflinePlayer getPlayer(String name) {
+    public static @Nullable OfflinePlayer getPlayer(String name) {
         if (nameUUIDMap.containsKey(name))
             return Bukkit.getOfflinePlayer(nameUUIDMap.get(name));
         return Bukkit.getPlayer(name);
@@ -113,6 +116,14 @@ public class LoggedPlayers implements Listener {
             ProxyMessaging.requestPlayerList();
         else
             receiveNetworkPlayers(new ArrayList<>());
+    }
+
+    public static List<String> getOnlinePlayerNames() {
+        return onlinePlayers;
+    }
+
+    public static List<String> getAllPlayerNames(){
+        return new ArrayList<>(nameUUIDMap.keySet());
     }
 
 }
