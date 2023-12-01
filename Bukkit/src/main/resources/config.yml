@@ -1,6 +1,6 @@
 
 # condense the tokens notifications to one message per given seconds
-# time in seconds (-1 to disable)
+# time in seconds (0 to disable)
 condense-spam: 30
 # allow players to have negative tokens
 negative-tokens: false

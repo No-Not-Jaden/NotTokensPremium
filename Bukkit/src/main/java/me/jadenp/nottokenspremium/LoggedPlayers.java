@@ -111,10 +111,7 @@ public class LoggedPlayers implements Listener {
      * Updates online players with accurate values
      */
     public static void updateOnlinePlayers() {
-        if (ProxyMessaging.isConnected())
-            // request players on the network from the proxy
-            ProxyMessaging.requestPlayerList();
-        else
+        if (!(ProxyMessaging.isConnected() && ProxyMessaging.requestPlayerList()))
             receiveNetworkPlayers(new ArrayList<>());
     }
 

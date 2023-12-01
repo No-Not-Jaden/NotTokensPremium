@@ -2,20 +2,25 @@ package me.jadenp.nottokenspremium;
 
 import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
 import me.jadenp.nottokenspremium.Configuration.Language;
+import me.jadenp.nottokenspremium.SQL.MySQL;
+import me.jadenp.nottokenspremium.SQL.SQLGetter;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.*;
 
 public class TokenManager {
     private static BukkitTask tokenTransmissionTask = null;
     private static BukkitTask tokenMessagingTask = null;
+    private static MySQL SQL;
+    private static SQLGetter data;
+    private static BukkitTask autoConnectTask = null;
     /**
      * File to save tokens locally
      */
@@ -36,11 +41,109 @@ public class TokenManager {
     private static final Map<UUID, Double> currentServerTokens = new HashMap<>();
 
     /**
-     * Loads any locally saved tokens into the system
+     * Load token manager system
      */
-    public static void loadLocalTokens() {
+    public static void loadTokenManager() {
         tokensHolder = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "tokensHolder.yml");
+        // tokens will only be stored locally if there is no sql connection and no proxy connection
 
+        SQL = new MySQL();
+        data = new SQLGetter(SQL);
+        if (!tryToConnect()) {
+            Bukkit.getLogger().info("[NotTokensPremium] Database not connected.");
+        }
+
+        if (autoConnectTask != null) {
+            autoConnectTask.cancel();
+        }
+        try {
+            if (!NotTokensPremium.getInstance().firstStart) {
+                SQL.reconnect();
+            }
+        } catch (SQLException ignored) {}
+        if (ConfigOptions.autoConnect) {
+            autoConnectTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    tryToConnect();
+                }
+            }.runTaskTimer(NotTokensPremium.getInstance(), 600, 600);
+        }
+
+    }
+
+    /**
+     * Try to connect to the SQL Database. Data will be migrated if that option is enabled.
+     * @return True if the database was connected successfully
+     */
+    public static boolean tryToConnect(){
+        if (!SQL.isConnected()) {
+            try {
+                SQL.connect();
+            } catch (SQLException e) {
+                //e.printStackTrace();
+                return false;
+            }
+
+            if (SQL.isConnected()) {
+                Bukkit.getLogger().info("[NotTokensPremium] SQL database is connected!");
+                data.createTable();
+                if (!currentServerTokens.isEmpty() && SQL.isMigrateLocalData()) {
+                    Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
+                    // add entries to database
+                    for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
+                        if (entry.getValue() != 0L)
+                            data.giveTokens(entry.getKey(), entry.getValue());
+                    }
+                    currentServerTokens.clear();
+                }
+                int rows = data.removeExtraData();
+                if (NotTokensPremium.getInstance().firstStart) {
+                    Bukkit.getLogger().info("Cleared up " + rows + " unused rows in the database!");
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Get the players with the higher number of tokens in descending order
+     * @param amount Amount of players to get
+     * @return A LinkedHashMap with the players with the highest number of tokens at the beginning
+     */
+    public static LinkedHashMap<UUID, Double> getTopTokens(int amount) {
+        if (SQL.isConnected())
+            return data.getTopTokens(amount);
+        LinkedHashMap<UUID, Double> sortedList = sortByValue(currentServerTokens);
+        LinkedHashMap<UUID, Double> cutList = new LinkedHashMap<>();
+        for (Map.Entry<UUID, Double> entry : sortedList.entrySet()) {
+            cutList.put(entry.getKey(), entry.getValue());
+            amount--;
+            if (amount == 0)
+                break;
+        }
+        return cutList;
+    }
+
+    /**
+     * Returns a sorted LinkedHashMap with higher values at the top
+     * @param hm HashMap to sort
+     * @return Sorted HashMap
+     */
+    public static LinkedHashMap<UUID, Double> sortByValue(Map<UUID, Double> hm) {
+        // Create a list from elements of HashMap
+        List<Map.Entry<UUID, Double>> list =
+                new LinkedList<>(hm.entrySet());
+
+        // Sort the list
+        list.sort((o1, o2) -> (o2.getValue()).compareTo(o1.getValue()));
+
+        // put data from sorted list to hashmap
+        LinkedHashMap<UUID, Double> temp = new LinkedHashMap<>();
+        for (Map.Entry<UUID, Double> aa : list) {
+            temp.put(aa.getKey(), aa.getValue());
+        }
+        return temp;
     }
 
     public static File getTokensHolder() {
@@ -99,6 +202,13 @@ public class TokenManager {
                 tokenMessagingQueue.put(uuid, new TokenMessage());
             }
         }
+        // update SQL database if it is connected
+        if (SQL.isConnected()) {
+            if (difference < 0)
+                data.removeTokens(uuid, -1 * amount);
+            else if (difference > 0)
+                data.giveTokens(uuid, amount);
+        }
         return true;
     }
 
@@ -119,6 +229,9 @@ public class TokenManager {
         return 0;
     }
 
+    /**
+     * Begin sending condensed spam token messages
+     */
     public static void beginTokenMessaging(){
         if (tokenMessagingTask != null)
             tokenMessagingTask.cancel();
@@ -137,6 +250,18 @@ public class TokenManager {
                 tokenMessagingQueue.entrySet().removeIf(uuidTokenMessageEntry -> System.currentTimeMillis() - uuidTokenMessageEntry.getValue().getLastMessageTime() >= ConfigOptions.tokenMessageInterval * 1000L);
             }
         }.runTaskTimer(NotTokensPremium.getInstance(), 100, 20);
+    }
+
+    /**
+     * Cancel sending condensed spam token messages
+     */
+    public static void cancelTokenMessaging(){
+        tokenMessagingTask.cancel();
+        tokenMessagingTask = null;
+    }
+
+    public static boolean isTokenMessagingActing() {
+        return tokenMessagingTask != null;
     }
 
     /**

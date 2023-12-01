@@ -1,7 +1,6 @@
 package me.jadenp.nottokenspremium;
 
 import me.jadenp.nottokenspremium.Configuration.Language;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -16,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class Commands implements CommandExecutor, TabCompleter {
+    public Commands(){}
     @Override
     public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
         if (!command.getName().equalsIgnoreCase("token"))
@@ -90,6 +90,11 @@ public class Commands implements CommandExecutor, TabCompleter {
             sender.sendMessage(Language.parse(Language.prefix + Language.adminAdd, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
             if (receiver.isOnline())
                 receiver.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, receiver));
+            return true;
+        } else if (args[0].equalsIgnoreCase("top")) {
+            // /token top
+            sender.sendMessage(Language.parse(Language.prefix + Language.leaderboard, parser));
+
         }
         return true;
     }

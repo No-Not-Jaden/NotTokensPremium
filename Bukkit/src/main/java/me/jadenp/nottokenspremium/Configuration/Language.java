@@ -34,6 +34,7 @@ public class Language {
     public static String adminGiveAll;
     public static String insufficientTokens;
     public static String unknownAmount;
+    public static String leaderboard;
 
     public static void loadLanguageOptions(){
         papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
@@ -62,6 +63,7 @@ public class Language {
         adminGiveAll = configuration.getString("admin-give-all");
         insufficientTokens = configuration.getString("insufficient-tokens");
         unknownAmount = configuration.getString("unknown-amount");
+        leaderboard = configuration.getString("leaderboard");
 
     }
 

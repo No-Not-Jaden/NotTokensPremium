@@ -2,6 +2,7 @@ package me.jadenp.nottokenspremium.Configuration;
 
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.OldNotTokensAdapter;
+import me.jadenp.nottokenspremium.TokenManager;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -13,6 +14,7 @@ public class ConfigOptions {
     public static int tokenMessageInterval;
     public static boolean negativeTokens;
     public static List<String> leaderboardExclusion = new ArrayList<>();
+    public static boolean autoConnect;
 
     public static void loadConfigOptions(){
         NotTokensPremium.getInstance().saveDefaultConfig();
@@ -36,5 +38,12 @@ public class ConfigOptions {
         tokenMessageInterval = config.getInt("condense-spam");
         negativeTokens = config.getBoolean("negative-tokens");
         leaderboardExclusion = config.getStringList("leaderboard-exclusion");
+        autoConnect = config.getBoolean("database.auto-connect");
+
+        // update condensed spam option
+        if (tokenMessageInterval > 0 && !TokenManager.isTokenMessagingActing())
+            TokenManager.beginTokenMessaging();
+        else if (tokenMessageInterval <= 0 && TokenManager.isTokenMessagingActing())
+            TokenManager.cancelTokenMessaging();
     }
 }
