@@ -15,6 +15,7 @@ public class ConfigOptions {
     public static boolean negativeTokens;
     public static List<String> leaderboardExclusion = new ArrayList<>();
     public static boolean autoConnect;
+    public static boolean updateNotification;
 
     public static void loadConfigOptions(){
         NotTokensPremium.getInstance().saveDefaultConfig();
@@ -39,6 +40,7 @@ public class ConfigOptions {
         negativeTokens = config.getBoolean("negative-tokens");
         leaderboardExclusion = config.getStringList("leaderboard-exclusion");
         autoConnect = config.getBoolean("database.auto-connect");
+        updateNotification = config.getBoolean("update-notification");
 
         // update condensed spam option
         if (tokenMessageInterval > 0 && !TokenManager.isTokenMessagingActing())

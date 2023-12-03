@@ -4,6 +4,8 @@
 condense-spam: 30
 # allow players to have negative tokens
 negative-tokens: false
+# send an update notification on startup and when an admin joins
+update-notification: true
 # a list of players that are excluded from /tokens top
 # not case-sensitive
 leaderboard-exclusion:

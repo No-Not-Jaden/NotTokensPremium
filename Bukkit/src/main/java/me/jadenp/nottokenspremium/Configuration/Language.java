@@ -35,6 +35,7 @@ public class Language {
     public static String insufficientTokens;
     public static String unknownAmount;
     public static String leaderboard;
+    public static String leaderboardRank;
 
     public static void loadLanguageOptions(){
         papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
@@ -64,7 +65,7 @@ public class Language {
         insufficientTokens = configuration.getString("insufficient-tokens");
         unknownAmount = configuration.getString("unknown-amount");
         leaderboard = configuration.getString("leaderboard");
-
+        leaderboardRank = configuration.getString("leaderboard-rank");
     }
 
     public static String parse(String text) {

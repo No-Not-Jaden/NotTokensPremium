@@ -11,10 +11,12 @@ import java.io.IOException;
 
 /**
  * tokens convert to item or command with withdraw/deposit
+ * change update checker ID
  */
 public class NotTokensPremium extends JavaPlugin {
     private static NotTokensPremium instance;
     public boolean firstStart = false;
+    public static boolean latestVersion = true;
 
     public static NotTokensPremium getInstance() {
         return instance;
@@ -51,8 +53,8 @@ public class NotTokensPremium extends JavaPlugin {
             new TokenExpansion().register();
 
         // update checker
-        if (updateNotification) {
-            new UpdateChecker(this, 104484).getVersion(version -> {
+        if (ConfigOptions.updateNotification) {
+            new UpdateChecker(this, ).getVersion(version -> {
                 if (getDescription().getVersion().contains("dev"))
                     return;
                 if (getDescription().getVersion().equals(version))
@@ -87,8 +89,8 @@ public class NotTokensPremium extends JavaPlugin {
                 latestVersion = !needsUpdate;
 
                 if (needsUpdate) {
-                    Bukkit.getLogger().info("[NotBounties] A new update is available. Current version: " + getDescription().getVersion() + " Latest version: " + version);
-                    Bukkit.getLogger().info("[NotBounties] Download a new version here:" + " https://www.spigotmc.org/resources/104484/");
+                    Bukkit.getLogger().info("[NotTokensPremium] A new update is available. Current version: " + getDescription().getVersion() + " Latest version: " + version);
+                    Bukkit.getLogger().info("[NotTokensPremium] Download a new version here:" + " https://www.spigotmc.org/resources//");
                 }
             });
         }

@@ -1,6 +1,7 @@
 package me.jadenp.nottokenspremium;
 
 import me.jadenp.nottokenspremium.Configuration.Language;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
@@ -9,10 +10,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
+import java.util.regex.Matcher;
 
 public class Commands implements CommandExecutor, TabCompleter {
     public Commands(){}
@@ -93,8 +92,18 @@ public class Commands implements CommandExecutor, TabCompleter {
             return true;
         } else if (args[0].equalsIgnoreCase("top")) {
             // /token top
+            if (!sender.hasPermission("nottokens.top")) {
+                sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
+                return true;
+            }
             sender.sendMessage(Language.parse(Language.prefix + Language.leaderboard, parser));
-
+            int rank = 1;
+            for (Map.Entry<UUID, Double> entry : TokenManager.getTopTokens(10).entrySet()) {
+                sender.sendMessage(Language.parse(Language.leaderboardRank.replaceAll("\\{rank}", Matcher.quoteReplacement(rank + "")), entry.getValue(), Bukkit.getOfflinePlayer(entry.getKey())));
+                rank++;
+            }
+            sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                                           ");
+            return true;
         }
         return true;
     }

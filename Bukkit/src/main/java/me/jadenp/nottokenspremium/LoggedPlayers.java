@@ -1,6 +1,8 @@
 package me.jadenp.nottokenspremium;
 
+import me.jadenp.nottokenspremium.Configuration.Language;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -13,6 +15,8 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static me.jadenp.nottokenspremium.Configuration.ConfigOptions.updateNotification;
 
 public class LoggedPlayers implements Listener {
 
@@ -85,6 +89,7 @@ public class LoggedPlayers implements Listener {
 
     /**
      * Log new players and record the online players
+     * Check for updates
      */
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
@@ -95,6 +100,20 @@ public class LoggedPlayers implements Listener {
         }
         if (!onlinePlayers.contains(event.getPlayer().getName()))
             onlinePlayers.add(event.getPlayer().getName());
+
+        // check for updates
+        if (updateNotification && !NotTokensPremium.latestVersion) {
+            if (event.getPlayer().hasPermission("nottokens.admin")) {
+                new UpdateChecker(NotTokensPremium.getInstance(), 104484).getVersion(version -> {
+                    if (NotTokensPremium.getInstance().getDescription().getVersion().contains("dev"))
+                        return;
+                    if (NotTokensPremium.getInstance().getDescription().getVersion().equals(version))
+                        return;
+                    event.getPlayer().sendMessage(Language.parse(Language.prefix, event.getPlayer()) + ChatColor.YELLOW + "A new update is available. Current version: " + ChatColor.GOLD + NotTokensPremium.getInstance().getDescription().getVersion() + ChatColor.YELLOW + " Latest version: " + ChatColor.GREEN + version);
+                    event.getPlayer().sendMessage(ChatColor.YELLOW + "Download a new version here:" + ChatColor.GRAY + " https://www.spigotmc.org/resources//");
+                });
+            }
+        }
     }
 
     /**
