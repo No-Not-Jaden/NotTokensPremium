@@ -9,10 +9,12 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,13 +25,24 @@ public class LoggedPlayers implements Listener {
     private static final Map<String, UUID> nameUUIDMap = new HashMap<>();
     private static final Map<UUID, String> UUIDNameMap = new HashMap<>();
     private static final List<String> onlinePlayers = new ArrayList<>();
+    private static List<UUID> newPlayers = new ArrayList<>();
+    private static long lastProxyRequest = 0;
+    private static long lastPlayerRequest = 0;
 
     /**
      * Load logged players from tokensHolder file
      */
     public static void loadLoggedPlayers() {
-        File tokensHolder = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "tokensHolder.yml");
-        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(tokensHolder);
+        File playerHolder = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "loggedplayers.yml");
+        try {
+            if (playerHolder.createNewFile()) {
+                Bukkit.getLogger().info("[NotTokensPremium] Created a new logged players file.");
+            }
+        } catch (IOException e) {
+            Bukkit.getLogger().warning("[NotTokensPremium] Could not check for existing logged players file!");
+            Bukkit.getLogger().warning(e.toString());
+        }
+        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(playerHolder);
         if (!configuration.isConfigurationSection("logged-names"))
             return;
         for (String key : Objects.requireNonNull(configuration.getConfigurationSection("logged-names")).getKeys(false)) {
@@ -39,6 +52,17 @@ public class LoggedPlayers implements Listener {
                 Bukkit.getLogger().warning("Could not get uuid of logged player: " + key + " = " + configuration.getString("logged-names." + key));
             }
         }
+
+        new BukkitRunnable(){
+            @Override
+            public void run() {
+                try {
+                    save();
+                } catch (IOException e) {
+                    Bukkit.getLogger().warning("[NotTokensPremium] Error saving logged players!");
+                }
+            }
+        }.runTaskTimer(NotTokensPremium.getInstance(), 20 * 60 * 15 + 10, 20 * 60 * 15);
     }
 
     public LoggedPlayers(){}
@@ -78,13 +102,15 @@ public class LoggedPlayers implements Listener {
     }
 
     /**
-     * Write the logged players to the configuration
-     * @param configuration YamlConfiguration to write to
+     * Save the logged players to the configuration
      */
-    public static void write(YamlConfiguration configuration){
+    public static void save() throws IOException {
+        File playerHolder = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "loggedplayers.yml");
+        YamlConfiguration configuration = new YamlConfiguration();
         for (Map.Entry<UUID, String> entry : UUIDNameMap.entrySet()) {
             configuration.set("logged-names." + entry.getKey().toString(), entry.getValue());
         }
+        configuration.save(playerHolder);
     }
 
     /**
@@ -95,8 +121,26 @@ public class LoggedPlayers implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         if (!UUIDNameMap.containsKey(event.getPlayer().getUniqueId())) {
             logPlayer(event.getPlayer().getName(), event.getPlayer().getUniqueId());
-            if (ProxyMessaging.isConnected())
-                ProxyMessaging.logNewPlayer(event.getPlayer());
+            if (ProxyMessaging.isConnected()) {
+                if (!ProxyMessaging.logNewPlayer(event.getPlayer()))
+                    Bukkit.getLogger().warning("[NotTokensPremium] Error logging player to the proxy!");
+                if (!newPlayers.isEmpty()) {
+                    List<UUID> failedAttempts = new ArrayList<>();
+                    for (UUID uuid : newPlayers) {
+                        if (!ProxyMessaging.logNewPlayer(UUIDNameMap.get(uuid), uuid)) {
+                            failedAttempts.add(uuid);
+                        }
+                    }
+                    newPlayers = new ArrayList<>(failedAttempts);
+                }
+            } else {
+                newPlayers.add(event.getPlayer().getUniqueId());
+                // request proxy connection with the player
+                if (System.currentTimeMillis() - lastProxyRequest >= 15000 * 60) {
+                    ProxyMessaging.requestConnection();
+                    lastProxyRequest = System.currentTimeMillis();
+                }
+            }
         }
         if (!onlinePlayers.contains(event.getPlayer().getName()))
             onlinePlayers.add(event.getPlayer().getName());
@@ -104,7 +148,7 @@ public class LoggedPlayers implements Listener {
         // check for updates
         if (updateNotification && !NotTokensPremium.latestVersion) {
             if (event.getPlayer().hasPermission("nottokens.admin")) {
-                new UpdateChecker(NotTokensPremium.getInstance(), 104484).getVersion(version -> {
+                new UpdateChecker(NotTokensPremium.getInstance(), NotTokensPremium.resourceID).getVersion(version -> {
                     if (NotTokensPremium.getInstance().getDescription().getVersion().contains("dev"))
                         return;
                     if (NotTokensPremium.getInstance().getDescription().getVersion().equals(version))
@@ -138,8 +182,16 @@ public class LoggedPlayers implements Listener {
         return onlinePlayers;
     }
 
-    public static List<String> getAllPlayerNames(){
+    public static List<String> getAllPlayerNames() {
+        if (ProxyMessaging.isConnected() && System.currentTimeMillis() - lastPlayerRequest > 15000) {
+            updateOnlinePlayers();
+            lastPlayerRequest = System.currentTimeMillis();
+        }
         return new ArrayList<>(nameUUIDMap.keySet());
+    }
+
+    public static List<UUID> getAllUUIDs(){
+        return new ArrayList<>(UUIDNameMap.keySet());
     }
 
 }

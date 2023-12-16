@@ -19,7 +19,26 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
 
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte @NotNull [] bytes) {
-        if (!channel.equalsIgnoreCase("BungeeCord"))
+        if (channel.equalsIgnoreCase("nottokenspremium:main")) {
+            ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
+            String subChannel = in.readUTF();
+            if (subChannel.equals("ReceiveConnection")) {
+                connected = true;
+                short savedPlayers = in.readShort();
+                Map<UUID, Double> networkTokens = new HashMap<>();
+                for (short i = 0; i < savedPlayers; i++) {
+                    try {
+                        UUID uuid = UUID.fromString(in.readUTF());
+                        double amount = in.readDouble();
+                        networkTokens.put(uuid, amount);
+                    } catch (IllegalArgumentException e) {
+                        Bukkit.getLogger().warning("[NotTokensPremium] Error reading uuid from proxy message!");
+                    }
+                }
+                TokenManager.connectProxy(networkTokens);
+            }
+        }
+        if (!channel.equalsIgnoreCase("bungeecord:main"))
             return;
         ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
         String subchannel = in.readUTF();
@@ -59,7 +78,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
                 in.readFully(msgbytes);
 
                 DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-                int maxReceive = 200;
+                int maxReceive = 2000;
                 while (maxReceive > 0) {
                     try {
                         String uuid = msgIn.readUTF();
@@ -105,7 +124,6 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
 
     private static boolean connected = false;
     public ProxyMessaging(){
-        connected = true;
     }
 
     public static boolean isConnected() {
@@ -133,9 +151,11 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      * @return true if the message was sent successfully
      */
     public static boolean sendMessage(String identifier, byte[] data) {
-         Bukkit.getServer().sendPluginMessage(NotTokensPremium.getInstance(), identifier, data);
-         // return is for future compatibility
-         return true;
+        if (!Bukkit.getOnlinePlayers().isEmpty()) {
+            Bukkit.getOnlinePlayers().iterator().next().sendPluginMessage(NotTokensPremium.getInstance(), identifier, data);
+            return true;
+        }
+         return false;
     }
 
     /**
@@ -158,9 +178,11 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      * @return True if the message was successful
      */
     public static boolean sendPlayerTokenUpdate(Player player, double tokenChange) {
+        // send proxy message
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(player.getUniqueId().toString(), tokenChange), "PlayerTokenUpdate");
-            return sendMessage("BungeeCord", message, player);
+            sendMessage("nottokenspremium:main", message, player);
+            return sendMessage("bungeecord:main", message, player);
         } catch (IOException e) {
             Bukkit.getLogger().warning("Could not send a token update for " + player.getName());
             Bukkit.getLogger().warning(e.toString());
@@ -174,9 +196,11 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      * @return True if the message was successful
      */
     public static boolean sendServerTokenUpdate(Map<UUID, Double> playerTokens) {
+        // send proxy message
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(playerTokens), "ServerTokenUpdate");
-            return sendMessage("BungeeCord", message);
+            sendMessage("nottokenspremium:main", message);
+            return sendMessage("bungeecord:main", message);
         } catch (IOException e) {
             Bukkit.getLogger().warning("Could not send a server token update.");
             Bukkit.getLogger().warning(e.toString());
@@ -241,7 +265,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("PlayerList");
         out.writeUTF("ALL");
-        return sendMessage("BungeeCord", out.toByteArray());
+        return sendMessage("bungeecord:main", out.toByteArray());
     }
 
     /**
@@ -256,12 +280,44 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
             msgout.writeUTF(player.getName());
             msgout.writeUTF(player.getUniqueId().toString());
         } catch (IOException e) {
-            Bukkit.getLogger().warning("[NotTokensPremium] Error logging new player to the network.");
             Bukkit.getLogger().warning(e.toString());
             return false;
         }
-        return sendMessage("BungeeCord", wrapGlobalMessage(msgbytes, "LogPlayer"), player);
+        return sendMessage("bungeecord:main", wrapGlobalMessage(msgbytes, "LogPlayer"), player);
     }
 
+    /**
+     * Sends a player to the network to be logged
+     * @param playerName The name of the player
+     * @param uuid The UUID of the player
+     * @return True if the message was successful
+     */
+    public static boolean logNewPlayer(String playerName, UUID uuid) {
+        ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
+        DataOutputStream msgout = new DataOutputStream(msgbytes);
+        try {
+            msgout.writeUTF(playerName);
+            msgout.writeUTF(uuid.toString());
+        } catch (IOException e) {
+            Bukkit.getLogger().warning(e.toString());
+            return false;
+        }
+        return sendMessage("bungeecord:main", wrapGlobalMessage(msgbytes, "LogPlayer"));
+    }
 
+    /**
+     * Sends a message to the proxy to see if one is connected.
+     * If a proxy is connected, a message will be sent back with all the saved tokens
+     */
+    public static void requestConnection(){
+        ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
+        DataOutputStream msgout = new DataOutputStream(msgbytes);
+        try {
+            msgout.writeUTF("RequestConnection");
+        } catch (IOException e) {
+            Bukkit.getLogger().warning("[NotTokensPremium] Failed to prepare a proxy connection request");
+            Bukkit.getLogger().warning(e.toString());
+        }
+        sendMessage("nottokenspremium:main", msgbytes.toByteArray());
+    }
 }

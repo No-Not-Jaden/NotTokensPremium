@@ -1,10 +1,9 @@
 package me.jadenp.nottokenspremium;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.File;
 
 public class TokenExpansion extends PlaceholderExpansion {
 

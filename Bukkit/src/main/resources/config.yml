@@ -10,8 +10,28 @@ update-notification: true
 # not case-sensitive
 leaderboard-exclusion:
   - Not_Jaden
+# exchange tokens for in-game items or a placeholder
+item-exchange:
+  # allow players to use the /tokens deposit and /tokens withdraw commands
+  enabled: false
+  # what item that tokens can be exchanged for
+  object: 'DIAMOND'
+  # the value of the object - for the default config, one diamond is worth 30 tokens
+  # decimals can be used
+  value: 30
+  # commands to run when giving the object to a player
+  # {amount} and {player} can be used
+  add-commands: []
+  remove-commands: []
+  # include the object items in the player's inventory or the object value of the placeholder in the player's balance
+  # this will automatically convert the object into tokens if a transaction requires it
+  auto-exchange: false
 # formatting of large numbers
 number-formatting:
+  # text before the currency
+  prefix: ''
+  # text after the currency
+  suffix: ''
   # Same as essentialsX config
   # For 1.234,50 use de-DE
   # For 1,234.50 use en-US

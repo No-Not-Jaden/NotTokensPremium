@@ -42,3 +42,6 @@ permissions:
   nottokens.balance:
     description: Check your token balance
     default: true
+  nottokens.exchange:
+    description: Exchange items for tokens
+    default: true

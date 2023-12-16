@@ -36,6 +36,8 @@ public class ConfigOptions {
                 config.set(key, config.getDefaults().get(key));
         }
 
+        NotTokensPremium.getInstance().saveConfig();
+
         tokenMessageInterval = config.getInt("condense-spam");
         negativeTokens = config.getBoolean("negative-tokens");
         leaderboardExclusion = config.getStringList("leaderboard-exclusion");
@@ -47,5 +49,9 @@ public class ConfigOptions {
             TokenManager.beginTokenMessaging();
         else if (tokenMessageInterval <= 0 && TokenManager.isTokenMessagingActing())
             TokenManager.cancelTokenMessaging();
+
+        // load other config sections
+        ItemExchange.loadExchange();
+        NumberFormatting.setCurrencyOptions(config.getConfigurationSection("number-formatting"));
     }
 }

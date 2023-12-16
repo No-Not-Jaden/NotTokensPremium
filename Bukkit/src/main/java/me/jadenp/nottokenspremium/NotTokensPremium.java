@@ -3,6 +3,7 @@ package me.jadenp.nottokenspremium;
 import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptAddon;
 import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
+import me.jadenp.nottokenspremium.Configuration.KillRewards.KillRewards;
 import me.jadenp.nottokenspremium.Configuration.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -17,7 +18,8 @@ public class NotTokensPremium extends JavaPlugin {
     private static NotTokensPremium instance;
     public boolean firstStart = false;
     public static boolean latestVersion = true;
-
+    public static int resourceID = 0;
+    public static int serverVersion = 20;
     public static NotTokensPremium getInstance() {
         return instance;
     }
@@ -35,18 +37,32 @@ public class NotTokensPremium extends JavaPlugin {
             }
         }
 
+        try {
+            // get the text version - ex: 1.20.3
+            String fullServerVersion = Bukkit.getBukkitVersion().substring(0, Bukkit.getBukkitVersion().indexOf("-"));
+            fullServerVersion = fullServerVersion.substring(2); // remove the '1.' in the version
+            if (fullServerVersion.contains("."))
+                fullServerVersion = fullServerVersion.substring(0,fullServerVersion.indexOf(".")); // remove the last digits if any - ex .3
+            serverVersion = Integer.parseInt(fullServerVersion);
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
+            Bukkit.getLogger().warning("[NotTokensPremium] Could not get the server version. Some features may not function properly.");
+        }
+
         // load configurations
         ConfigOptions.loadConfigOptions();
         Language.loadLanguageOptions();
         LoggedPlayers.loadLoggedPlayers();
         TransactionLogs.loadTransactionLogs();
         TokenManager.loadTokenManager();
+        KillRewards.loadKillRewards();
 
         Bukkit.getPluginCommand("nottokens").setExecutor(new Commands());
+        Bukkit.getPluginManager().registerEvents(new LoggedPlayers(), this);
+        Bukkit.getPluginManager().registerEvents(new KillRewards(), this);
 
         // register plugin messaging to a proxy
-        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
-        this.getServer().getMessenger().registerIncomingPluginChannel(this, "BungeeCord", new ProxyMessaging());
+        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "bungeecord:main");
+        this.getServer().getMessenger().registerIncomingPluginChannel(this, "bungeecord:main", new ProxyMessaging());
 
         // register PlaceholderAPI Expansion
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI"))
@@ -54,7 +70,7 @@ public class NotTokensPremium extends JavaPlugin {
 
         // update checker
         if (ConfigOptions.updateNotification) {
-            new UpdateChecker(this, ).getVersion(version -> {
+            new UpdateChecker(this, resourceID).getVersion(version -> {
                 if (getDescription().getVersion().contains("dev"))
                     return;
                 if (getDescription().getVersion().equals(version))
@@ -101,6 +117,11 @@ public class NotTokensPremium extends JavaPlugin {
 
     @Override
     public void onDisable(){
-
+        try {
+            TokenManager.saveTokens();
+            LoggedPlayers.save();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

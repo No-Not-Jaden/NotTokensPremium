@@ -2,6 +2,7 @@ package me.jadenp.nottokenspremium;
 
 import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
 import me.jadenp.nottokenspremium.Configuration.Language;
+import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
 import me.jadenp.nottokenspremium.SQL.MySQL;
 import me.jadenp.nottokenspremium.SQL.SQLGetter;
 import org.bukkit.Bukkit;
@@ -42,16 +43,26 @@ public class TokenManager {
 
     /**
      * Load token manager system
+     * This should only be run on startup
      */
     public static void loadTokenManager() {
         tokensHolder = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "tokensHolder.yml");
-        // tokens will only be stored locally if there is no sql connection and no proxy connection
+        // tokens will only be stored locally if there is no sql connection and no proxy connection or if tokens could not be transmitted before shutdown
+        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(tokensHolder);
+        for (String uuid : configuration.getKeys(false)) {
+            try {
+                currentServerTokens.put(UUID.fromString(uuid), configuration.getDouble(uuid));
+            } catch (IllegalArgumentException e) {
+                Bukkit.getLogger().warning("[NotTokensPremium] Invalid UUID stored in tokensHolder.yml: " + uuid);
+            }
+        }
 
         SQL = new MySQL();
         data = new SQLGetter(SQL);
         if (!tryToConnect()) {
             Bukkit.getLogger().info("[NotTokensPremium] Database not connected.");
         }
+
 
         if (autoConnectTask != null) {
             autoConnectTask.cancel();
@@ -70,6 +81,48 @@ public class TokenManager {
             }.runTaskTimer(NotTokensPremium.getInstance(), 600, 600);
         }
 
+        // auto save task
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    autoSaveTokens();
+                } catch (IOException e) {
+                    Bukkit.getLogger().warning("[NotTokensPremium] Error auto saving tokens!");
+                }
+                // send a proxy message to load any tokens
+                if (tokenTransmissionTask == null && !Bukkit.getOnlinePlayers().isEmpty())
+                    ProxyMessaging.requestConnection();
+            }
+        }.runTaskTimer(NotTokensPremium.getInstance(), 20 * 60 * 15, 20 * 60 * 15); // 15 min
+
+    }
+
+    /**
+     * Save tokens to a local file
+     * Tokens will not be saved if an SQL database is connected or all the tokens are stored on the proxy
+     */
+    public static void saveTokens() throws IOException {
+        if (tokenTransmissionTask != null) {
+            YamlConfiguration configuration = new YamlConfiguration();
+            for (Map.Entry<UUID, Double> entry : tokenTransmissionQueue.entrySet()) {
+                configuration.set(entry.getKey().toString(), entry.getValue());
+            }
+            configuration.save(tokensHolder);
+        } else {
+            autoSaveTokens();
+        }
+    }
+
+    /**
+     * Only save the tokens if not connected to any external storage
+     */
+    public static void autoSaveTokens() throws IOException {
+        YamlConfiguration configuration = new YamlConfiguration();
+        for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
+            configuration.set(entry.getKey().toString(), entry.getValue());
+        }
+        configuration.save(tokensHolder);
     }
 
     /**
@@ -146,9 +199,6 @@ public class TokenManager {
         return temp;
     }
 
-    public static File getTokensHolder() {
-        return tokensHolder;
-    }
 
     /**
      * Give a player tokens.
@@ -180,7 +230,12 @@ public class TokenManager {
      */
     public static boolean setTokens(UUID uuid, double amount) {
         // change in token balance for the player
-        double difference = getTokens(uuid) - amount;
+        double currentTokens = getTokens(uuid);
+        // make sure the amount isn't below 0 if negative tokens is false
+        if (amount < 0 && !ConfigOptions.negativeTokens) {
+            amount = 0;
+        }
+        double difference = amount - currentTokens;
         // change current tokens
         currentServerTokens.put(uuid, amount);
         // update token transmission queue if it is connected
@@ -223,7 +278,26 @@ public class TokenManager {
         TransactionLogs.log(LoggedPlayers.getPlayerName(uuid) + " is having tokens updated from the proxy. (" + NumberFormatting.formatNumber(amount) + ") Total: " +  NumberFormatting.formatNumber(newTokens));
     }
 
+    /**
+     * Connect to the proxy and load all tokens stored there
+     * @param serverTokens Tokens stored on the proxy
+     */
+    public static void connectProxy(Map<UUID, Double> serverTokens) {
+        if (tokenMessagingTask != null)
+            return; // already connected
+        if (!serverTokens.isEmpty()) {
+            if (Bukkit.getOnlinePlayers().isEmpty())
+                return; // nothing to receive current tokens
+            ProxyMessaging.sendServerTokenUpdate(currentServerTokens);
+        }
+        currentServerTokens.putAll(serverTokens);
+        beginTokenTransmission();
+        Bukkit.getLogger().info("[NotTokensPremium] Connected to proxy!");
+    }
+
     public static double getTokens(UUID uuid) {
+        if (SQL.isConnected())
+            return data.getTokens(uuid);
         if (currentServerTokens.containsKey(uuid))
             return currentServerTokens.get(uuid);
         return 0;
@@ -290,6 +364,8 @@ public class TokenManager {
             @Override
             public void run() {
                 if (tokenTransmissionQueue.isEmpty())
+                    return;
+                if (Bukkit.getOnlinePlayers().isEmpty())
                     return;
                 if (ProxyMessaging.sendServerTokenUpdate(tokenTransmissionQueue))
                     tokenTransmissionQueue.clear();

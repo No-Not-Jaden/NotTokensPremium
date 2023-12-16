@@ -1,6 +1,5 @@
-package me.jadenp.nottokenspremium;
+package me.jadenp.nottokenspremium.Configuration;
 
-import me.jadenp.nottokenspremium.Configuration.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.ConfigurationSection;
@@ -19,13 +18,13 @@ public class NumberFormatting {
     public static LinkedHashMap<Long, String> nfDivisions = new LinkedHashMap<>();
 
 
-    public static void setCurrencyOptions(ConfigurationSection currencyOptions, ConfigurationSection numberFormatting) {
+    public static void setCurrencyOptions(ConfigurationSection numberFormatting) {
 
 
-        if (currencyOptions.isSet("prefix"))
-            currencyPrefix = Language.parse(Objects.requireNonNull(currencyOptions.getString("prefix")));
-        if (currencyOptions.isSet("suffix"))
-            currencySuffix = Language.parse(Objects.requireNonNull(currencyOptions.getString("suffix")));
+        if (numberFormatting.isSet("prefix"))
+            currencyPrefix = Language.parse(Objects.requireNonNull(numberFormatting.getString("prefix")));
+        if (numberFormatting.isSet("suffix"))
+            currencySuffix = Language.parse(Objects.requireNonNull(numberFormatting.getString("suffix")));
 
 
         useDivisions = numberFormatting.getBoolean("use-divisions");

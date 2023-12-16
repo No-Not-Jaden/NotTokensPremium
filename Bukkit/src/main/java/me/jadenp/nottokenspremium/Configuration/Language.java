@@ -2,7 +2,6 @@ package me.jadenp.nottokenspremium.Configuration;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.jadenp.nottokenspremium.NotTokensPremium;
-import me.jadenp.nottokenspremium.NumberFormatting;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -36,6 +35,10 @@ public class Language {
     public static String unknownAmount;
     public static String leaderboard;
     public static String leaderboardRank;
+    public static String adminRemoveAll;
+    public static String insufficientExchange;
+    public static String deposit;
+    public static String withdraw;
 
     public static void loadLanguageOptions(){
         papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
@@ -66,6 +69,10 @@ public class Language {
         unknownAmount = configuration.getString("unknown-amount");
         leaderboard = configuration.getString("leaderboard");
         leaderboardRank = configuration.getString("leaderboard-rank");
+        adminRemoveAll = configuration.getString("admin-remove-all");
+        insufficientExchange = configuration.getString("insufficient-exchange");
+        deposit = configuration.getString("deposit");
+        withdraw = configuration.getString("withdraw");
     }
 
     public static String parse(String text) {
@@ -87,18 +94,18 @@ public class Language {
     public static String parse(String text, String replacement, OfflinePlayer player) {
         text = text.replaceAll("\\{player}", Matcher.quoteReplacement(replacement));
         text = text.replaceAll("\\{sender}", Matcher.quoteReplacement(replacement));
-        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(replacement));
+        text = text.replaceAll("\\{amount}", NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(NumberFormatting.parseCurrency(replacement)) + NumberFormatting.currencySuffix);
         return parse(text, player);
     }
 
     public static String parse(String text, String replacement, double amount, OfflinePlayer player) {
-        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount)));
+        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         return parse(text, replacement, player);
     }
 
     public static String parse(String text, double amount, OfflinePlayer player) {
-        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount)));
-        text = text.replaceAll("\\{tokens}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount)));
+        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
+        text = text.replaceAll("\\{tokens}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         return parse(text, player);
     }
 
