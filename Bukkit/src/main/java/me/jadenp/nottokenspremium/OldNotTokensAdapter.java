@@ -1,14 +1,13 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.Configuration.Language;
 import me.jadenp.nottokenspremium.Configuration.KillRewards.KillRewards;
+import me.jadenp.nottokenspremium.Configuration.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 import java.util.UUID;
 
 public class OldNotTokensAdapter {
@@ -112,10 +111,9 @@ public class OldNotTokensAdapter {
         for (String token : oldTokensHolderConfig.getKeys(false)) {
             if (!token.equals("logged-names"))
                 try {
-                    if (!TokenManager.giveTokens(UUID.fromString(token), oldTokensHolderConfig.getLong(token)))
-                        Bukkit.getLogger().warning("[NotTokens] Could not give " + LoggedPlayers.getPlayerName(UUID.fromString(token)) + " " + oldTokensHolderConfig.getLong(token) + " tokens!");
+                    TokenManager.giveTokens(UUID.fromString(token), oldTokensHolderConfig.getLong(token));
                 } catch (IllegalArgumentException e) {
-                    Bukkit.getLogger().warning("[NotTokens] Could not get a uuid from: " + token);
+                    Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from: " + token);
                 }
         }
         return true;
@@ -123,9 +121,8 @@ public class OldNotTokensAdapter {
 
     public static File getOldDirectory(){
         String path = NotTokensPremium.getInstance().getDataFolder().getPath();
-        Bukkit.getLogger().info(path);
         // delete the Premium from NotTokensPremium
-        path = path.substring(path.length() - 7);
+        path = path.substring(0, path.length() - 7);
         return new File(path);
     }
 }

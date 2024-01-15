@@ -4,16 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>me.jadenp.nottokenspremium</groupId>
-    <artifactId>NotTokensPremium</artifactId>
-    <version>1.0.0</version>
-    <modules>
-        <module>Bukkit</module>
-        <module>Velocity</module>
-    </modules>
-    <packaging>pom</packaging>
+    <parent>
+        <groupId>me.jadenp.nottokenspremium</groupId>
+        <artifactId>NotTokensPremium</artifactId>
+        <version>1.0.0</version>
+    </parent>
 
-    <name>NotTokens Premium</name>
+    <artifactId>NotTokensPremium-Velocity</artifactId>
+    <version>dev_1.0.0.21</version>
+    <packaging>jar</packaging>
 
     <properties>
         <java.version>11</java.version>
@@ -105,7 +104,19 @@
         </plugins>
     </reporting>
 
+    <repositories>
+        <repository>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
 
-
-
+    <dependencies>
+        <dependency>
+            <groupId>com.velocitypowered</groupId>
+            <artifactId>velocity-api</artifactId>
+            <version>3.2.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

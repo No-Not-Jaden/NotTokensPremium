@@ -1,7 +1,10 @@
 package me.jadenp.nottokenspremium.Configuration.KillRewards;
 
+import me.jadenp.nottokenspremium.Configuration.Language;
+import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
+import me.jadenp.nottokenspremium.TransactionLogs;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
@@ -13,9 +16,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
 
 public class KillRewards implements Listener {
-    private static File killRewardsFile;
     private static final Map<EntityType, KillReward> rewardMap = new HashMap<>();
     private static boolean enabled;
     private static KillReward allMobsReward;
@@ -24,11 +27,12 @@ public class KillRewards implements Listener {
     public KillRewards() {}
 
     /**
-     * Load kill rewards from the kill-rewards.yml file
+     * Load kill rewards from the killrewards.yml file
      */
     public static void loadKillRewards() {
-        killRewardsFile = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "kill-rewards.yml");
-        NotTokensPremium.getInstance().saveResource("kill-rewards", false);
+        File killRewardsFile = getKillRewardsFile();
+        if (!killRewardsFile.exists())
+            NotTokensPremium.getInstance().saveResource("killrewards.yml", false);
         YamlConfiguration configuration = YamlConfiguration.loadConfiguration(killRewardsFile);
 
         // make sure some default information is present
@@ -48,7 +52,7 @@ public class KillRewards implements Listener {
             try {
                 configuration.save(killRewardsFile);
             } catch (IOException e) {
-                Bukkit.getLogger().warning("Error saving kill-rewards.yml");
+                Bukkit.getLogger().warning("Error saving killrewards.yml");
                 Bukkit.getLogger().warning(e.toString());
             }
 
@@ -74,7 +78,7 @@ public class KillRewards implements Listener {
     }
 
     public static File getKillRewardsFile() {
-        return killRewardsFile;
+        return new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "killrewards.yml");
     }
 
     @EventHandler
@@ -93,7 +97,11 @@ public class KillRewards implements Listener {
         if (reward == null)
             return;
         // give reward
-        if (reward.giveReward())
-            TokenManager.giveTokens(event.getEntity().getKiller().getUniqueId(), reward.getAmount());
+        if (reward.giveReward()) {
+            if (TokenManager.giveTokens(event.getEntity().getKiller().getUniqueId(), reward.getAmount())) {
+                event.getEntity().getKiller().sendMessage(Language.parse(Language.prefix + Language.killReward.replaceAll("\\{entity}", Matcher.quoteReplacement(event.getEntityType().toString())), reward.getAmount(), event.getEntity().getKiller()));
+            }
+            TransactionLogs.log(event.getEntity().getKiller().getName() + " received " + reward.getAmount() + " tokens for killing " + event.getEntityType() +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(event.getEntity().getKiller().getUniqueId())));
+        }
     }
 }

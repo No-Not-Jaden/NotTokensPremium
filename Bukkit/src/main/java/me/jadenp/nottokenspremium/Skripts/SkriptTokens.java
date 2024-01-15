@@ -9,19 +9,19 @@ import ch.njol.skript.lang.util.SimpleExpression;
 import ch.njol.util.Kleenean;
 import ch.njol.util.coll.CollectionUtils;
 import me.jadenp.nottokenspremium.TokenManager;
-import org.bukkit.entity.Player;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.event.Event;
 import org.jetbrains.annotations.NotNull;
 
 public class SkriptTokens extends SimpleExpression<Double> {
 
     static {
-        Skript.registerExpression(SkriptTokens.class, Double.class, ExpressionType.COMBINED, "%tokens%");
+        Skript.registerExpression(SkriptTokens.class, Double.class, ExpressionType.COMBINED, "[the] tokens of %-player/offlineplayer%");
     }
-    private Expression<Player> player;
+    private Expression<OfflinePlayer> player;
     @Override
     protected Double[] get(@NotNull Event event) {
-        Player p = player.getSingle(event);
+        OfflinePlayer p = player.getSingle(event);
         if (p != null)
             return new Double[] {TokenManager.getTokens(p.getUniqueId())};
         return null;
@@ -39,8 +39,8 @@ public class SkriptTokens extends SimpleExpression<Double> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, SkriptParser.ParseResult parser) {
-        player = (Expression<Player>) exprs[0];
+    public boolean init(Expression<?>[] exprs, int matchedPattern, @NotNull Kleenean isDelayed, SkriptParser.@NotNull ParseResult parser) {
+        player = (Expression<OfflinePlayer>) exprs[0];
         return true;
     }
 
@@ -58,8 +58,8 @@ public class SkriptTokens extends SimpleExpression<Double> {
     }
 
     @Override
-    public void change(Event event, Object[] delta, Changer.ChangeMode mode) {
-        Player p = player.getSingle(event);
+    public void change(@NotNull Event event, Object[] delta, Changer.@NotNull ChangeMode mode) {
+        OfflinePlayer p = player.getSingle(event);
         if (p != null) {
             if (mode == Changer.ChangeMode.ADD) {
                 TokenManager.giveTokens(p.getUniqueId(), (double) delta[0]);

@@ -5,6 +5,7 @@ import me.jadenp.nottokenspremium.TokenManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -113,7 +114,7 @@ public class ItemExchange {
                 // using placeholderAPI
                 String placeholder = Language.parse(currencyName, player);
                 try {
-                    return tryParse(placeholder) * value;
+                    return tryParse(placeholder);
                 } catch (NumberFormatException e) {
                     Bukkit.getLogger().warning("Error getting a number from the currency placeholder " + currencyName + "!");
                     return 0;
@@ -124,7 +125,7 @@ public class ItemExchange {
             }
         } else {
             // item
-            return checkAmount(player, Material.valueOf(currencyName), customModelData) * value;
+            return checkAmount(player, Material.valueOf(currencyName), customModelData);
         }
     }
     /**
@@ -218,6 +219,7 @@ public class ItemExchange {
             }
         }
         player.getInventory().setContents(contents);
+        player.playSound(player.getLocation(), Sound.UI_TOAST_OUT, 1, 1);
     }
 
 
@@ -242,6 +244,7 @@ public class ItemExchange {
                     Location loc = p.getLocation();
                     p.getWorld().dropItem(loc, leftOver.get(0));
                 }
+                p.playSound(p.getLocation(), Sound.UI_TOAST_IN, 1, 1);
 
             }
         }.runTaskTimer(NotTokensPremium.getInstance(), 0, 5);

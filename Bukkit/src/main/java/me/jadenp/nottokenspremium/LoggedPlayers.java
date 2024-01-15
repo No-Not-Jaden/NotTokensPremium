@@ -25,8 +25,6 @@ public class LoggedPlayers implements Listener {
     private static final Map<String, UUID> nameUUIDMap = new HashMap<>();
     private static final Map<UUID, String> UUIDNameMap = new HashMap<>();
     private static final List<String> onlinePlayers = new ArrayList<>();
-    private static List<UUID> newPlayers = new ArrayList<>();
-    private static long lastProxyRequest = 0;
     private static long lastPlayerRequest = 0;
 
     /**
@@ -76,6 +74,18 @@ public class LoggedPlayers implements Listener {
     }
 
     /**
+     * Checks if a player is logged already
+     * @param name Name of the player
+     * @param uuid UUID of the player
+     * @return true if the player is already logged
+     */
+    public static boolean isLogged(String name, UUID uuid) {
+        if (!nameUUIDMap.containsKey(name) || !nameUUIDMap.get(name).equals(uuid))
+            return false;
+        return UUIDNameMap.containsKey(uuid) && UUIDNameMap.get(uuid).equals(name);
+    }
+
+    /**
      * Get a player name from a UUID. This method checks logged players, then tries to get a name from Bukkit.
      * If no name can be found, the UUID is returned in string form
      * @param uuid UUID of player
@@ -98,6 +108,10 @@ public class LoggedPlayers implements Listener {
     public static @Nullable OfflinePlayer getPlayer(String name) {
         if (nameUUIDMap.containsKey(name))
             return Bukkit.getOfflinePlayer(nameUUIDMap.get(name));
+        for (Map.Entry<String, UUID> entry : nameUUIDMap.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(name))
+                return Bukkit.getOfflinePlayer(entry.getValue());
+        }
         return Bukkit.getPlayer(name);
     }
 
@@ -121,32 +135,13 @@ public class LoggedPlayers implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         if (!UUIDNameMap.containsKey(event.getPlayer().getUniqueId())) {
             logPlayer(event.getPlayer().getName(), event.getPlayer().getUniqueId());
-            if (ProxyMessaging.isConnected()) {
-                if (!ProxyMessaging.logNewPlayer(event.getPlayer()))
-                    Bukkit.getLogger().warning("[NotTokensPremium] Error logging player to the proxy!");
-                if (!newPlayers.isEmpty()) {
-                    List<UUID> failedAttempts = new ArrayList<>();
-                    for (UUID uuid : newPlayers) {
-                        if (!ProxyMessaging.logNewPlayer(UUIDNameMap.get(uuid), uuid)) {
-                            failedAttempts.add(uuid);
-                        }
-                    }
-                    newPlayers = new ArrayList<>(failedAttempts);
-                }
-            } else {
-                newPlayers.add(event.getPlayer().getUniqueId());
-                // request proxy connection with the player
-                if (System.currentTimeMillis() - lastProxyRequest >= 15000 * 60) {
-                    ProxyMessaging.requestConnection();
-                    lastProxyRequest = System.currentTimeMillis();
-                }
-            }
+            ProxyMessaging.logNewPlayer(event.getPlayer());
         }
         if (!onlinePlayers.contains(event.getPlayer().getName()))
             onlinePlayers.add(event.getPlayer().getName());
 
         // check for updates
-        if (updateNotification && !NotTokensPremium.latestVersion) {
+        if (updateNotification && !NotTokensPremium.latestVersion && NotTokensPremium.resourceID != 0) {
             if (event.getPlayer().hasPermission("nottokens.admin")) {
                 new UpdateChecker(NotTokensPremium.getInstance(), NotTokensPremium.resourceID).getVersion(version -> {
                     if (NotTokensPremium.getInstance().getDescription().getVersion().contains("dev"))
@@ -158,15 +153,33 @@ public class LoggedPlayers implements Listener {
                 });
             }
         }
+        // update network players
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                LoggedPlayers.getAllPlayerNames();
+            }
+        }.runTaskLater(NotTokensPremium.getInstance(), 5);
+
     }
 
     /**
      * Updates the current online players with the online players on the current server and the players parameter
-     * @param players Additional players to add to the online players list
+     * @param players Additional players coming in the form of (username):(uuid)
      */
     public static void receiveNetworkPlayers(List<String> players) {
         onlinePlayers.clear();
-        onlinePlayers.addAll(players);
+        for (String player : players) {
+            if (player.isEmpty())
+                continue;
+            String name = player.substring(0, player.indexOf(":"));
+            onlinePlayers.add(name);
+            try {
+                UUID uuid = UUID.fromString(player.substring(player.indexOf(":") + 1));
+                if (!isLogged(name, uuid))
+                    logPlayer(name, uuid);
+            } catch (IllegalArgumentException ignored) {}
+        }
         Bukkit.getOnlinePlayers().forEach(player -> onlinePlayers.add(player.getName()));
     }
 
@@ -174,7 +187,7 @@ public class LoggedPlayers implements Listener {
      * Updates online players with accurate values
      */
     public static void updateOnlinePlayers() {
-        if (!(ProxyMessaging.isConnected() && ProxyMessaging.requestPlayerList()))
+        if (!(!Bukkit.getOnlinePlayers().isEmpty() && ProxyMessaging.requestPlayerList()))
             receiveNetworkPlayers(new ArrayList<>());
     }
 
@@ -183,7 +196,7 @@ public class LoggedPlayers implements Listener {
     }
 
     public static List<String> getAllPlayerNames() {
-        if (ProxyMessaging.isConnected() && System.currentTimeMillis() - lastPlayerRequest > 15000) {
+        if (!Bukkit.getOnlinePlayers().isEmpty() && System.currentTimeMillis() - lastPlayerRequest > 15000) {
             updateOnlinePlayers();
             lastPlayerRequest = System.currentTimeMillis();
         }

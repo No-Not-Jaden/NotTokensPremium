@@ -2,12 +2,15 @@ package me.jadenp.nottokenspremium.Configuration;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.jadenp.nottokenspremium.NotTokensPremium;
+import me.jadenp.nottokenspremium.TokenManager;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,7 +19,6 @@ import static net.md_5.bungee.api.ChatColor.COLOR_CHAR;
 
 public class Language {
     private static boolean papiEnabled;
-    private static File languageFile;
 
     public static String prefix;
     public static String balance;
@@ -39,18 +41,28 @@ public class Language {
     public static String insufficientExchange;
     public static String deposit;
     public static String withdraw;
+    public static String transferOwn;
+    public static String killReward;
 
     public static void loadLanguageOptions(){
         papiEnabled = Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
-        languageFile = new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "language.yml");
-        NotTokensPremium.getInstance().saveResource("language.yml", false);
+        File languageFile = getLanguageFile();
+        if (!languageFile.exists())
+            NotTokensPremium.getInstance().saveResource("language.yml", false);
 
         // fill in any default options that aren't present
         YamlConfiguration configuration = YamlConfiguration.loadConfiguration(languageFile);
+        configuration.setDefaults(YamlConfiguration.loadConfiguration(new InputStreamReader(Objects.requireNonNull(NotTokensPremium.getInstance().getResource("language.yml")))));
         for (String key : Objects.requireNonNull(configuration.getDefaults()).getKeys(true)) {
             if (!configuration.isSet(key))
                 configuration.set(key, configuration.getDefaults().get(key));
         }
+        try {
+            configuration.save(languageFile);
+        } catch (IOException e) {
+            Bukkit.getLogger().warning(e.toString());
+        }
+
 
         prefix = configuration.getString("prefix");
         balance = configuration.getString("balance");
@@ -73,6 +85,8 @@ public class Language {
         insufficientExchange = configuration.getString("insufficient-exchange");
         deposit = configuration.getString("deposit");
         withdraw = configuration.getString("withdraw");
+        transferOwn = configuration.getString("transfer-own");
+        killReward = configuration.getString("kill-reward");
     }
 
     public static String parse(String text) {
@@ -94,18 +108,21 @@ public class Language {
     public static String parse(String text, String replacement, OfflinePlayer player) {
         text = text.replaceAll("\\{player}", Matcher.quoteReplacement(replacement));
         text = text.replaceAll("\\{sender}", Matcher.quoteReplacement(replacement));
-        text = text.replaceAll("\\{amount}", NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(NumberFormatting.parseCurrency(replacement)) + NumberFormatting.currencySuffix);
+        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(NumberFormatting.parseCurrency(replacement)) + NumberFormatting.currencySuffix));
         return parse(text, player);
     }
 
     public static String parse(String text, String replacement, double amount, OfflinePlayer player) {
         text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
+        text = text.replaceAll("\\{tokens}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         return parse(text, replacement, player);
     }
 
     public static String parse(String text, double amount, OfflinePlayer player) {
         text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         text = text.replaceAll("\\{tokens}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
+        double balance = ItemExchange.autoExchange && player.isOnline() ? TokenManager.getTokens(player.getUniqueId()) + ItemExchange.getBalance(player.getPlayer()) * ItemExchange.getValue() : TokenManager.getTokens(player.getUniqueId());
+        text = text.replaceAll("\\{balance}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(balance) + NumberFormatting.currencySuffix));
         return parse(text, player);
     }
 
@@ -133,7 +150,7 @@ public class Language {
     }
 
     public static File getLanguageFile() {
-        return languageFile;
+        return new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "language.yml");
     }
 
     private static String color(String str){

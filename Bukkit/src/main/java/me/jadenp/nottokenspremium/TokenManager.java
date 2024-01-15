@@ -1,6 +1,7 @@
 package me.jadenp.nottokenspremium;
 
 import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
+import me.jadenp.nottokenspremium.Configuration.ItemExchange;
 import me.jadenp.nottokenspremium.Configuration.Language;
 import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
 import me.jadenp.nottokenspremium.SQL.MySQL;
@@ -8,6 +9,7 @@ import me.jadenp.nottokenspremium.SQL.SQLGetter;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -15,9 +17,10 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class TokenManager {
-    private static BukkitTask tokenTransmissionTask = null;
     private static BukkitTask tokenMessagingTask = null;
     private static MySQL SQL;
     private static SQLGetter data;
@@ -59,27 +62,16 @@ public class TokenManager {
 
         SQL = new MySQL();
         data = new SQLGetter(SQL);
-        if (!tryToConnect()) {
-            Bukkit.getLogger().info("[NotTokensPremium] Database not connected.");
+        if (tryToConnect()) {
+            Bukkit.getLogger().info("[NotTokensPremium] SQL Database Connected!.");
         }
 
 
-        if (autoConnectTask != null) {
-            autoConnectTask.cancel();
-        }
         try {
             if (!NotTokensPremium.getInstance().firstStart) {
                 SQL.reconnect();
             }
         } catch (SQLException ignored) {}
-        if (ConfigOptions.autoConnect) {
-            autoConnectTask = new BukkitRunnable() {
-                @Override
-                public void run() {
-                    tryToConnect();
-                }
-            }.runTaskTimer(NotTokensPremium.getInstance(), 600, 600);
-        }
 
         // auto save task
         new BukkitRunnable() {
@@ -90,27 +82,37 @@ public class TokenManager {
                 } catch (IOException e) {
                     Bukkit.getLogger().warning("[NotTokensPremium] Error auto saving tokens!");
                 }
-                // send a proxy message to load any tokens
-                if (tokenTransmissionTask == null && !Bukkit.getOnlinePlayers().isEmpty())
-                    ProxyMessaging.requestConnection();
             }
         }.runTaskTimer(NotTokensPremium.getInstance(), 20 * 60 * 15, 20 * 60 * 15); // 15 min
 
     }
 
+    public static void startAutoConnectTask() {
+        if (autoConnectTask != null) {
+            autoConnectTask.cancel();
+        }
+        if (ConfigOptions.autoConnect) {
+            autoConnectTask = new BukkitRunnable() {
+                @Override
+                public void run() {
+                    tryToConnect();
+                }
+            }.runTaskTimer(NotTokensPremium.getInstance(), 600, 600);
+        }
+    }
+
     /**
-     * Save tokens to a local file
-     * Tokens will not be saved if an SQL database is connected or all the tokens are stored on the proxy
+     * Save needed tokens on shutdown
      */
     public static void saveTokens() throws IOException {
-        if (tokenTransmissionTask != null) {
+        if (ProxyMessaging.hasConnectedBefore()) {
             YamlConfiguration configuration = new YamlConfiguration();
             for (Map.Entry<UUID, Double> entry : tokenTransmissionQueue.entrySet()) {
                 configuration.set(entry.getKey().toString(), entry.getValue());
             }
             configuration.save(tokensHolder);
-        } else {
-            autoSaveTokens();
+        } else if (!SQL.isConnected()) {
+            saveLocalTokens();
         }
     }
 
@@ -118,6 +120,16 @@ public class TokenManager {
      * Only save the tokens if not connected to any external storage
      */
     public static void autoSaveTokens() throws IOException {
+        if (!ProxyMessaging.hasConnectedBefore() && !SQL.isConnected())
+            saveLocalTokens();
+        TransactionLogs.saveTransactions();
+    }
+
+    /**
+     * Saves tokens to a file
+     * @throws IOException if an error occurs saving tokens
+     */
+    public static void saveLocalTokens() throws IOException {
         YamlConfiguration configuration = new YamlConfiguration();
         for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
             configuration.set(entry.getKey().toString(), entry.getValue());
@@ -145,10 +157,13 @@ public class TokenManager {
                     Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
                     // add entries to database
                     for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
-                        if (entry.getValue() != 0L)
+                        if (entry.getValue() != 0.0)
                             data.giveTokens(entry.getKey(), entry.getValue());
                     }
+                    if (ProxyMessaging.hasConnectedBefore())
+                        eraseProxyTokens();
                     currentServerTokens.clear();
+                    TransactionLogs.log("Migrated all tokens to an SQL database.");
                 }
                 int rows = data.removeExtraData();
                 if (NotTokensPremium.getInstance().firstStart) {
@@ -157,6 +172,18 @@ public class TokenManager {
             }
         }
         return true;
+    }
+
+    /**
+     * Erases all tokens from the proxy. This should be followed up with a currentServerTokens.clear();
+     */
+    private static void eraseProxyTokens() {
+        Map<UUID, Double> playerTokens = new HashMap<>();
+        for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
+            playerTokens.put(entry.getKey(), -1 * entry.getValue());
+        }
+        tokenTransmissionQueue.clear();
+        ProxyMessaging.sendServerTokenUpdate(playerTokens);
     }
 
     /**
@@ -170,6 +197,8 @@ public class TokenManager {
         LinkedHashMap<UUID, Double> sortedList = sortByValue(currentServerTokens);
         LinkedHashMap<UUID, Double> cutList = new LinkedHashMap<>();
         for (Map.Entry<UUID, Double> entry : sortedList.entrySet()) {
+            if (ConfigOptions.leaderboardExclusion.stream().flatMap(name -> Stream.of(name.toLowerCase())).collect(Collectors.toList()).contains(LoggedPlayers.getPlayerName(entry.getKey()).toLowerCase()))
+                continue;
             cutList.put(entry.getKey(), entry.getValue());
             amount--;
             if (amount == 0)
@@ -205,7 +234,7 @@ public class TokenManager {
      *
      * @param uuid UUID of player to give tokens to
      * @param amount Amount of tokens to be given
-     * @return true if the tokens were given successfully
+     * @return true if a message should be sent to the player
      */
     public static boolean giveTokens(UUID uuid, double amount) {
         return setTokens(uuid, getTokens(uuid) + amount);
@@ -216,9 +245,32 @@ public class TokenManager {
      *
      * @param uuid UUID of player to have tokens removed
      * @param amount Amount of tokens to be removed
-     * @return true if the tokens were removed successfully
+     * @return true if a message should be sent to the player
      */
     public static boolean removeTokens(UUID uuid, double amount) {
+        // auto exchange
+        if (getTokens(uuid) - amount < 0) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (ItemExchange.autoExchange && player != null) {
+                double requiredItems = amount * -1 / ItemExchange.getValue();
+                if (ItemExchange.getObject().contains("%")) {
+                    if (requiredItems - (long) requiredItems > 0) {
+                        requiredItems++;
+                        requiredItems = (long) requiredItems;
+                    }
+                    double refund = requiredItems * ItemExchange.getValue() + amount;
+                    if (requiredItems <= ItemExchange.getBalance(player)) {
+                        ItemExchange.deposit(player, requiredItems);
+                        return setTokens(uuid, getTokens(uuid) - amount + refund);
+                    } else {
+                        ItemExchange.deposit(player, ItemExchange.getBalance(player));
+                    }
+                } else {
+                    ItemExchange.deposit(player, Math.min(requiredItems, ItemExchange.getBalance(player)));
+                }
+            }
+
+        }
         return setTokens(uuid, getTokens(uuid) - amount);
     }
 
@@ -226,45 +278,51 @@ public class TokenManager {
      * Sets the tokens of a player.
      * @param uuid UUID of player to set the tokens of
      * @param amount New amount of tokens
-     * @return True if the transaction was successful
+     * @return true if a message should be sent to the player
      */
     public static boolean setTokens(UUID uuid, double amount) {
         // change in token balance for the player
         double currentTokens = getTokens(uuid);
         // make sure the amount isn't below 0 if negative tokens is false
-        if (amount < 0 && !ConfigOptions.negativeTokens) {
+
+        if (!ConfigOptions.negativeTokens && amount < 0)
             amount = 0;
-        }
         double difference = amount - currentTokens;
+        if (difference == 0)
+            return false;
         // change current tokens
-        currentServerTokens.put(uuid, amount);
-        // update token transmission queue if it is connected
-        if (tokenTransmissionTask != null)
-            if (tokenTransmissionQueue.containsKey(uuid))
-                tokenTransmissionQueue.replace(uuid, tokenTransmissionQueue.get(uuid) + difference);
-            else
-                tokenTransmissionQueue.put(uuid, difference);
-        // check to send message or add to queue
-        if (tokenMessagingQueue.containsKey(uuid)) {
-            tokenMessagingQueue.get(uuid).addTokenChange(difference);
-        } else {
-            // send message
-            OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-            if (player.isOnline()) {
-                String message = difference > 0 ? Language.playerReceive : Language.playerTake;
-                Objects.requireNonNull(player.getPlayer()).sendMessage(Language.parse(message, Math.abs(difference), player));
-                // add new obj to queue
-                tokenMessagingQueue.put(uuid, new TokenMessage());
+        if (!SQL.isConnected()) {
+            currentServerTokens.put(uuid, amount);
+            if (Bukkit.getOnlinePlayers().isEmpty()) {
+                // update token transmission queue if the server is empty
+                if (tokenTransmissionQueue.containsKey(uuid))
+                    tokenTransmissionQueue.replace(uuid, tokenTransmissionQueue.get(uuid) + difference);
+                else
+                    tokenTransmissionQueue.put(uuid, difference);
+            } else {
+                ProxyMessaging.sendPlayerTokenUpdate(uuid, difference);
             }
-        }
-        // update SQL database if it is connected
-        if (SQL.isConnected()) {
+        } else {
+            // update SQL database if it is connected
             if (difference < 0)
                 data.removeTokens(uuid, -1 * amount);
             else if (difference > 0)
                 data.giveTokens(uuid, amount);
         }
-        return true;
+
+        // check to send message or add to queue
+        OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
+        if (player.isOnline()) {
+            if (tokenMessagingQueue.containsKey(uuid)) {
+                tokenMessagingQueue.get(uuid).addTokenChange(difference);
+                return false;
+            } else {
+                // add new obj to queue
+                tokenMessagingQueue.put(uuid, new TokenMessage());
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -283,18 +341,43 @@ public class TokenManager {
      * @param serverTokens Tokens stored on the proxy
      */
     public static void connectProxy(Map<UUID, Double> serverTokens) {
-        if (tokenMessagingTask != null)
-            return; // already connected
-        if (!serverTokens.isEmpty()) {
+        if (!tokenTransmissionQueue.isEmpty()) {
             if (Bukkit.getOnlinePlayers().isEmpty())
                 return; // nothing to receive current tokens
-            ProxyMessaging.sendServerTokenUpdate(currentServerTokens);
+            ProxyMessaging.sendServerTokenUpdate(tokenTransmissionQueue);
         }
+        currentServerTokens.clear();
+        for (Map.Entry<UUID, Double> entry : serverTokens.entrySet())
+            Bukkit.getLogger().info(entry.getKey() + ":" + entry.getValue());
         currentServerTokens.putAll(serverTokens);
-        beginTokenTransmission();
+        for (Map.Entry<UUID, Double> entry : tokenTransmissionQueue.entrySet()) {
+            if (currentServerTokens.containsKey(entry.getKey()))
+                currentServerTokens.replace(entry.getKey(), currentServerTokens.get(entry.getKey()) + entry.getValue());
+            else
+                currentServerTokens.put(entry.getKey(), entry.getValue());
+        }
+        tokenTransmissionQueue.clear();
         Bukkit.getLogger().info("[NotTokensPremium] Connected to proxy!");
+        if (SQL.isConnected() && SQL.isMigrateLocalData()) {
+            // add entries to database
+            for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
+                if (entry.getValue() != 0.0)
+                    data.giveTokens(entry.getKey(), entry.getValue());
+            }
+            eraseProxyTokens();
+            currentServerTokens.clear();
+            Bukkit.getLogger().info("[NotTokensPremium] Migrated proxy tokens to the SQL database.");
+            TransactionLogs.log("Migrated all tokens to an SQL database.");
+        }
+
     }
 
+
+    /**
+     * Get the tokens corresponding to a UUID. If an SQL server is connected, tokens will be retried from there.
+     * @param uuid UUID that holds tokens
+     * @return The amount of tokens corresponding to the UUID or 0 if this UUID hasn't been recorded yet.
+     */
     public static double getTokens(UUID uuid) {
         if (SQL.isConnected())
             return data.getTokens(uuid);
@@ -314,11 +397,13 @@ public class TokenManager {
             public void run() {
                 for (Map.Entry<UUID, TokenMessage> entry : tokenMessagingQueue.entrySet()) {
                     if (System.currentTimeMillis() - entry.getValue().getLastMessageTime() < ConfigOptions.tokenMessageInterval * 1000L)
-                        return;
+                        continue;
+                    if (entry.getValue().getTokenChange() == 0.0)
+                        continue;
                     // send message
                     OfflinePlayer player = Bukkit.getOfflinePlayer(entry.getKey());
                     if (player.isOnline()) {
-                        Objects.requireNonNull(player.getPlayer()).sendMessage(Language.parse(Language.reducedMessage, entry.getValue().getTokenChange(), System.currentTimeMillis() - entry.getValue().getLastMessageTime(), player));
+                        Objects.requireNonNull(player.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.reducedMessage, entry.getValue().getTokenChange(), System.currentTimeMillis() - entry.getValue().getLastMessageTime(), player));
                     }
                 }
                 tokenMessagingQueue.entrySet().removeIf(uuidTokenMessageEntry -> System.currentTimeMillis() - uuidTokenMessageEntry.getValue().getLastMessageTime() >= ConfigOptions.tokenMessageInterval * 1000L);
@@ -338,38 +423,6 @@ public class TokenManager {
         return tokenMessagingTask != null;
     }
 
-    /**
-     * Returns the queued transmission for the player matching the specified uuid and removes the transmission from the queue
-     * @param uuid UUID of the player to get the transmission from
-     * @return The amount of tokens to be changed
-     */
-    public static double separateTransmission(UUID uuid) {
-        if (tokenTransmissionQueue.containsKey(uuid)) {
-            double transmission = tokenTransmissionQueue.get(uuid);
-            tokenTransmissionQueue.remove(uuid);
-            return transmission;
-        }
-        return 0;
-    }
 
-    public static boolean isUsingTransmission(){
-        return tokenTransmissionTask != null;
-    }
 
-    public static void beginTokenTransmission() {
-        if (tokenTransmissionTask != null) {
-            tokenTransmissionTask.cancel();
-        }
-        tokenTransmissionTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (tokenTransmissionQueue.isEmpty())
-                    return;
-                if (Bukkit.getOnlinePlayers().isEmpty())
-                    return;
-                if (ProxyMessaging.sendServerTokenUpdate(tokenTransmissionQueue))
-                    tokenTransmissionQueue.clear();
-            }
-        }.runTaskTimerAsynchronously(NotTokensPremium.getInstance(), 50, 21);
-    }
 }

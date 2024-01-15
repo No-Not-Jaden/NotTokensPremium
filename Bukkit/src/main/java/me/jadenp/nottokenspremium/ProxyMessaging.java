@@ -5,25 +5,30 @@ import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
-import org.yaml.snakeyaml.tokens.Token;
 
 import java.io.*;
 import java.util.*;
 
 public class ProxyMessaging implements PluginMessageListener, Listener {
+    private static boolean connectedBefore = false;
+
+    public static boolean hasConnectedBefore() {
+        return connectedBefore;
+    }
 
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte @NotNull [] bytes) {
-        if (channel.equalsIgnoreCase("nottokenspremium:main")) {
-            ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
-            String subChannel = in.readUTF();
-            if (subChannel.equals("ReceiveConnection")) {
-                connected = true;
+        if (!channel.equals("nottokenspremium:main"))
+            return;
+        connectedBefore = true;
+        ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
+        String subChannel = in.readUTF();
+        Bukkit.getLogger().info(subChannel);
+        switch (subChannel) {
+            case "ReceiveConnection":
                 short savedPlayers = in.readShort();
                 Map<UUID, Double> networkTokens = new HashMap<>();
                 for (short i = 0; i < savedPlayers; i++) {
@@ -36,113 +41,123 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
                     }
                 }
                 TokenManager.connectProxy(networkTokens);
-            }
-        }
-        if (!channel.equalsIgnoreCase("bungeecord:main"))
-            return;
-        ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
-        String subchannel = in.readUTF();
-        switch (subchannel) {
+                break;
             case "PlayerList":
-                String server = in.readUTF(); // this is currently not used but could be in the future
-
                 String playerList = in.readUTF(); // CSV (Comma-Separated Values)
 
                 String[] splitList = playerList.split(",");
+                Bukkit.getLogger().info("Received PlayerList: " + Arrays.toString(splitList));
                 // send them over to LoggedPlayers
                 LoggedPlayers.receiveNetworkPlayers(List.of(splitList));
                 break;
-            case "LogPlayer": {
-                short len = in.readShort();
-                byte[] msgbytes = new byte[len];
-                in.readFully(msgbytes);
+            case "Forward": {
+                in.readUTF(); // ALL
+                String subSubChannel = in.readUTF();
+                switch (subSubChannel) {
+                    case "ServerTokenUpdate": {
+                        short len = in.readShort();
+                        byte[] msgbytes = new byte[len];
+                        in.readFully(msgbytes);
 
-                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-                try {
-                    String playerName = msgIn.readUTF();
-                    String uuid = msgIn.readUTF();
-                    try {
-                        LoggedPlayers.logPlayer(playerName, UUID.fromString(uuid));
-                    } catch (IllegalArgumentException e) {
-                        Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + playerName + ")");
-                    }
-                } catch (IOException e) {
-                    Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
-                    Bukkit.getLogger().warning(e.toString());
-                }
-                break;
-            }
-            case "ServerTokenMessage": {
-                short len = in.readShort();
-                byte[] msgbytes = new byte[len];
-                in.readFully(msgbytes);
-
-                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-                int maxReceive = 2000;
-                while (maxReceive > 0) {
-                    try {
-                        String uuid = msgIn.readUTF();
-                        double tokenChange = msgIn.readDouble();
-                        try {
-                            TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
-                        } catch (IllegalArgumentException e) {
-                            Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                        DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                        int maxReceive = 2000;
+                        while (maxReceive > 0) {
+                            try {
+                                String uuid = msgIn.readUTF();
+                                double tokenChange = msgIn.readDouble();
+                                try {
+                                    TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
+                                } catch (IllegalArgumentException e) {
+                                    Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                                }
+                            } catch (EOFException e) {
+                                Bukkit.getLogger().info("Reached End");
+                                break;
+                            } catch (IOException e) {
+                                Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                                Bukkit.getLogger().warning(e.toString());
+                            }
+                            maxReceive--;
                         }
-                    } catch (EOFException e) {
-                        Bukkit.getLogger().info("Reached End");
                         break;
-                    } catch (IOException e) {
-                        Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
-                        Bukkit.getLogger().warning(e.toString());
                     }
-                    maxReceive--;
-                }
-                break;
-            }
-            case "PlayerTokenMessage": {
-                short len = in.readShort();
-                byte[] msgbytes = new byte[len];
-                in.readFully(msgbytes);
+                    case "PlayerTokenUpdate": {
+                        short len = in.readShort();
+                        byte[] msgbytes = new byte[len];
+                        in.readFully(msgbytes);
 
-                DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
-                try {
-                    String uuid = msgIn.readUTF();
-                    double tokenChange = msgIn.readDouble();
-                    try {
-                        TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
-                    } catch (IllegalArgumentException e) {
-                        Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                        DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                        try {
+                            String uuid = msgIn.readUTF();
+                            double tokenChange = msgIn.readDouble();
+                            try {
+                                TokenManager.editTokensSilently(UUID.fromString(uuid), tokenChange);
+                            } catch (IllegalArgumentException e) {
+                                Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
+                            }
+                        } catch (IOException e) {
+                            Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                            Bukkit.getLogger().warning(e.toString());
+                        }
+                        break;
                     }
-                } catch (IOException e) {
-                    Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
-                    Bukkit.getLogger().warning(e.toString());
+                    case "LogPlayer": {
+                        short len = in.readShort();
+                        byte[] msgbytes = new byte[len];
+                        in.readFully(msgbytes);
+
+                        DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                        try {
+                            String playerName = msgIn.readUTF();
+                            String uuid = msgIn.readUTF();
+                            try {
+                                LoggedPlayers.logPlayer(playerName, UUID.fromString(uuid));
+                            } catch (IllegalArgumentException e) {
+                                Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + playerName + ")");
+                            }
+                        } catch (IOException e) {
+                            Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                            Bukkit.getLogger().warning(e.toString());
+                        }
+                        break;
+                    }
+                    case "LogAllPlayers": {
+                        short len = in.readShort();
+                        byte[] msgbytes = new byte[len];
+                        in.readFully(msgbytes);
+
+                        DataInputStream msgIn = new DataInputStream(new ByteArrayInputStream(msgbytes));
+                        try {
+                            for (int i = 0; i < 2000; i++) {
+                                String msg = msgIn.readUTF();
+                                String playerName = msg.substring(msg.indexOf(":") + 1);
+                                String uuid = msg.substring(0, msg.indexOf(":"));
+                                try {
+                                    LoggedPlayers.logPlayer(playerName, UUID.fromString(uuid));
+                                } catch (IllegalArgumentException e) {
+                                    Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + playerName + ")");
+                                }
+                            }
+
+                        } catch (EOFException e) {
+                            Bukkit.getLogger().info("Reached End");
+                            break;
+                        } catch (IOException e) {
+                            Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
+                            Bukkit.getLogger().warning(e.toString());
+                        }
+                        break;
+                    }
                 }
                 break;
             }
+
         }
     }
 
-    private static boolean connected = false;
     public ProxyMessaging(){
     }
 
-    public static boolean isConnected() {
-        return connected;
-    }
-
-    /**
-     * Transmit tokens to other server on leave
-     * This is important to avoid withdrawing more tokens than the player has
-     */
-    @EventHandler
-    public void onQuit(PlayerQuitEvent event) {
-        if (!TokenManager.isUsingTransmission())
-            return;
-        double transmission = TokenManager.separateTransmission(event.getPlayer().getUniqueId());
-        if (transmission != 0)
-            if (!sendPlayerTokenUpdate(event.getPlayer(), transmission))
-                Bukkit.getLogger().warning("[NotTokensPremium] Error transmitting " + transmission + " tokens to the proxy for " + event.getPlayer().getName());
-    }
 
     /**
      * Sends a message to the backend server
@@ -152,7 +167,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
      */
     public static boolean sendMessage(String identifier, byte[] data) {
         if (!Bukkit.getOnlinePlayers().isEmpty()) {
-            Bukkit.getOnlinePlayers().iterator().next().sendPluginMessage(NotTokensPremium.getInstance(), identifier, data);
+            sendMessage(identifier, data, Bukkit.getOnlinePlayers().iterator().next());
             return true;
         }
          return false;
@@ -160,51 +175,47 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
 
     /**
      * Sends a message to the backend server
+     *
      * @param identifier message identifier
-     * @param data data to be sent
-     * @param player player to send the message through
-     * @return true if the message was sent successfully
+     * @param data       data to be sent
+     * @param player     player to send the message through
      */
-    public static boolean sendMessage(String identifier, byte[] data, Player player) {
+    public static void sendMessage(String identifier, byte[] data, Player player) {
+        //Bukkit.getLogger().info("Sending: " + identifier + " with " + player.getName());
         player.sendPluginMessage(NotTokensPremium.getInstance(), identifier, data);
         // return is for future compatibility
-        return true;
     }
 
     /**
      * Send a token update for a single player
-     * @param player Player to be updated
+     *
+     * @param uuid        UUID of player to be updated
      * @param tokenChange Tokens to be changed from the player's balance
-     * @return True if the message was successful
      */
-    public static boolean sendPlayerTokenUpdate(Player player, double tokenChange) {
+    public static void sendPlayerTokenUpdate(UUID uuid, double tokenChange) {
         // send proxy message
         try {
-            byte[] message = wrapGlobalMessage(encodeMessage(player.getUniqueId().toString(), tokenChange), "PlayerTokenUpdate");
-            sendMessage("nottokenspremium:main", message, player);
-            return sendMessage("bungeecord:main", message, player);
+            byte[] message = wrapGlobalMessage(encodeMessage(uuid.toString(), tokenChange), "PlayerTokenUpdate");
+            sendMessage("nottokenspremium:main", message);
         } catch (IOException e) {
-            Bukkit.getLogger().warning("Could not send a token update for " + player.getName());
+            Bukkit.getLogger().warning("Could not send a token update for " + LoggedPlayers.getPlayerName(uuid));
             Bukkit.getLogger().warning(e.toString());
-            return false;
         }
     }
 
     /**
      * Send token updates for multiple players
+     *
      * @param playerTokens Map of uuid of player and amount of tokens to be changed
-     * @return True if the message was successful
      */
-    public static boolean sendServerTokenUpdate(Map<UUID, Double> playerTokens) {
+    public static void sendServerTokenUpdate(Map<UUID, Double> playerTokens) {
         // send proxy message
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(playerTokens), "ServerTokenUpdate");
             sendMessage("nottokenspremium:main", message);
-            return sendMessage("bungeecord:main", message);
         } catch (IOException e) {
             Bukkit.getLogger().warning("Could not send a server token update.");
             Bukkit.getLogger().warning(e.toString());
-            return false;
         }
     }
 
@@ -265,34 +276,24 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("PlayerList");
         out.writeUTF("ALL");
-        return sendMessage("bungeecord:main", out.toByteArray());
+        return sendMessage("nottokenspremium:main", out.toByteArray());
     }
 
     /**
      * Sends a player to the network to be logged
      * @param player Player to be logged
-     * @return True if the message was successful
      */
-    public static boolean logNewPlayer(Player player) {
-        ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
-        DataOutputStream msgout = new DataOutputStream(msgbytes);
-        try {
-            msgout.writeUTF(player.getName());
-            msgout.writeUTF(player.getUniqueId().toString());
-        } catch (IOException e) {
-            Bukkit.getLogger().warning(e.toString());
-            return false;
-        }
-        return sendMessage("bungeecord:main", wrapGlobalMessage(msgbytes, "LogPlayer"), player);
+    public static void logNewPlayer(Player player) {
+        logNewPlayer(player.getName(), player.getUniqueId());
     }
 
     /**
      * Sends a player to the network to be logged
+     *
      * @param playerName The name of the player
-     * @param uuid The UUID of the player
-     * @return True if the message was successful
+     * @param uuid       The UUID of the player
      */
-    public static boolean logNewPlayer(String playerName, UUID uuid) {
+    public static void logNewPlayer(String playerName, UUID uuid) {
         ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
         DataOutputStream msgout = new DataOutputStream(msgbytes);
         try {
@@ -300,24 +301,11 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
             msgout.writeUTF(uuid.toString());
         } catch (IOException e) {
             Bukkit.getLogger().warning(e.toString());
-            return false;
+            return;
         }
-        return sendMessage("bungeecord:main", wrapGlobalMessage(msgbytes, "LogPlayer"));
+        sendMessage("nottokenspremium:main", wrapGlobalMessage(msgbytes, "LogPlayer"));
     }
 
-    /**
-     * Sends a message to the proxy to see if one is connected.
-     * If a proxy is connected, a message will be sent back with all the saved tokens
-     */
-    public static void requestConnection(){
-        ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
-        DataOutputStream msgout = new DataOutputStream(msgbytes);
-        try {
-            msgout.writeUTF("RequestConnection");
-        } catch (IOException e) {
-            Bukkit.getLogger().warning("[NotTokensPremium] Failed to prepare a proxy connection request");
-            Bukkit.getLogger().warning(e.toString());
-        }
-        sendMessage("nottokenspremium:main", msgbytes.toByteArray());
-    }
+
+
 }

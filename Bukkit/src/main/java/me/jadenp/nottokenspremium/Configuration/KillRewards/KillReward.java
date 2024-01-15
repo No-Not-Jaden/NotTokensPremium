@@ -1,7 +1,5 @@
 package me.jadenp.nottokenspremium.Configuration.KillRewards;
 
-import org.bukkit.entity.EntityType;
-
 public class KillReward {
     private final double amount;
     private final double rate;
@@ -21,7 +19,7 @@ public class KillReward {
      * @return True if the random number is less than the rate
      */
     public boolean giveReward(){
-        return Math.random() <= rate;
+        return Math.random()<= rate;
     }
 
 }

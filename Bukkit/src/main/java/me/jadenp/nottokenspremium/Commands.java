@@ -12,6 +12,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -19,7 +20,7 @@ import java.util.regex.Matcher;
 public class Commands implements CommandExecutor, TabCompleter {
     public Commands(){}
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String s, String[] args) {
+    public boolean onCommand(@NotNull CommandSender sender, Command command, @NotNull String s, String[] args) {
         if (!command.getName().equalsIgnoreCase("token"))
             return true;
         if (args.length == 0) {
@@ -76,6 +77,11 @@ public class Commands implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Language.parse(Language.prefix + Language.unknownPlayer, args[1], parser));
                 return true;
             }
+            // sending to yourself
+            if (receiver.getUniqueId().equals(parser.getUniqueId())) {
+                sender.sendMessage(Language.parse(Language.prefix + Language.transferOwn, parser));
+                return true;
+            }
             // get amount
             double amount;
             try {
@@ -85,17 +91,17 @@ public class Commands implements CommandExecutor, TabCompleter {
                 return true;
             }
             // check balance
-            double balance = TokenManager.getTokens(parser.getUniqueId());
+            double balance = ItemExchange.autoExchange ? TokenManager.getTokens(parser.getUniqueId()) + ItemExchange.getBalance(parser) * ItemExchange.getValue() : TokenManager.getTokens(parser.getUniqueId());
             if (balance < amount) {
-                sender.sendMessage(Language.parse(Language.prefix + Language.insufficientTokens, balance, parser));
+                sender.sendMessage(Language.parse(Language.prefix + Language.insufficientTokens, amount, parser));
                 return true;
             }
             // transfer
             if (TokenManager.removeTokens(parser.getUniqueId(), amount))
-                TokenManager.giveTokens(receiver.getUniqueId(), amount);
-            sender.sendMessage(Language.parse(Language.prefix + Language.adminAdd, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
-            if (receiver.isOnline())
-                receiver.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, receiver));
+                sender.sendMessage(Language.parse(Language.prefix + Language.adminAdd, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
+            if (TokenManager.giveTokens(receiver.getUniqueId(), amount) && receiver.isOnline())
+                Objects.requireNonNull(receiver.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, receiver));
+            TransactionLogs.log(parser.getName() + " transferred " + amount + " tokens to " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +". Balances: " +  NumberFormatting.formatNumber(TokenManager.getTokens(parser.getUniqueId())) + " : " + NumberFormatting.formatNumber(TokenManager.getTokens(receiver.getUniqueId())));
             return true;
         } else if (args[0].equalsIgnoreCase("top")) {
             // /token top
@@ -136,10 +142,11 @@ public class Commands implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Language.parse(Language.prefix + Language.unknownAmount, args[2], parser));
                 return true;
             }
-            TokenManager.giveTokens(receiver.getUniqueId(), amount);
+            if (TokenManager.giveTokens(receiver.getUniqueId(), amount) && receiver.isOnline() && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(receiver.getUniqueId())))
+                Objects.requireNonNull(receiver.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
             sender.sendMessage(Language.parse(Language.prefix + Language.adminAdd, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
-            if (receiver.isOnline())
-                receiver.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
+            String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+            TransactionLogs.log(senderName + " gave " + amount + " tokens to " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(receiver.getUniqueId())));
             return true;
         } else if (args[0].equalsIgnoreCase("remove")) {
             // /token remove (player) (amount)
@@ -167,14 +174,16 @@ public class Commands implements CommandExecutor, TabCompleter {
                 return true;
             }
             // check if they have enough tokens
-            double balance = TokenManager.getTokens(receiver.getUniqueId());
+            double balance = ItemExchange.autoExchange && receiver.isOnline() ? TokenManager.getTokens(receiver.getUniqueId()) + ItemExchange.getBalance((Player) receiver) * ItemExchange.getValue() : TokenManager.getTokens(receiver.getUniqueId());
             if (amount > balance && !ConfigOptions.negativeTokens) {
                 amount = balance;
             }
-            TokenManager.removeTokens(receiver.getUniqueId(), amount);
+            // remove tokens & send messages
+            if (TokenManager.removeTokens(receiver.getUniqueId(), amount) && receiver.isOnline() && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(receiver.getUniqueId())))
+                Objects.requireNonNull(receiver.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
             sender.sendMessage(Language.parse(Language.prefix + Language.adminRemove, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
-            if (receiver.isOnline())
-                receiver.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
+            String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+            TransactionLogs.log(senderName + " removed " + amount + " tokens from " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(receiver.getUniqueId())));
             return true;
         } else if (args[0].equalsIgnoreCase("set")) {
             // /token set (player) (amount)
@@ -204,10 +213,13 @@ public class Commands implements CommandExecutor, TabCompleter {
             // check for negative values
             if (amount < 0 && !ConfigOptions.negativeTokens)
                 amount = 0;
-            TokenManager.setTokens(receiver.getUniqueId(), amount);
+
+            // set tokens and send messages
+            if (TokenManager.setTokens(receiver.getUniqueId(), amount) && receiver.isOnline() && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(receiver.getUniqueId())))
+                Objects.requireNonNull(receiver.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerSet, sender.getName(), amount, parser));
             sender.sendMessage(Language.parse(Language.prefix + Language.adminSet, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
-            if (receiver.isOnline())
-                receiver.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerSet, sender.getName(), amount, parser));
+            String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+            TransactionLogs.log(senderName + " set " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +"'s balance to " + amount);
             return true;
         } else if (args[0].equalsIgnoreCase("giveall")) {
             // /token giveall (amount) (online/offline)
@@ -230,17 +242,20 @@ public class Commands implements CommandExecutor, TabCompleter {
             }
             if (args.length == 3 && args[2].equalsIgnoreCase("offline")) {
                 for (UUID uuid : LoggedPlayers.getAllUUIDs()) {
-                    TokenManager.giveTokens(uuid, amount);
                     OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-                    if (player.isOnline())
-                        player.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
+                    if (TokenManager.giveTokens(uuid, amount) && player.isOnline() && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(player.getUniqueId())))
+                        Objects.requireNonNull(player.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
+                    String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+                    TransactionLogs.log(senderName + " gave " + amount + " tokens to " + LoggedPlayers.getPlayerName(player.getUniqueId()) +". (giveall) Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
                 }
                 // send message
                 sender.sendMessage(Language.parse(Language.prefix + Language.adminGiveAll.replaceAll("\\{amount}", Matcher.quoteReplacement(LoggedPlayers.getAllUUIDs().size() + "")), amount, parser));
             } else {
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    TokenManager.giveTokens(player.getUniqueId(), amount);
-                    player.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
+                    if (TokenManager.giveTokens(player.getUniqueId(), amount) && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(player.getUniqueId())))
+                        player.sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
+                    String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+                    TransactionLogs.log(senderName + " gave " + amount + " tokens to " + LoggedPlayers.getPlayerName(player.getUniqueId()) +". (giveall) Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
                 }
                 // send message
                 sender.sendMessage(Language.parse(Language.prefix + Language.adminGiveAll.replaceAll("\\{amount}", Matcher.quoteReplacement(Bukkit.getOnlinePlayers().size() + "")), amount, parser));
@@ -266,17 +281,20 @@ public class Commands implements CommandExecutor, TabCompleter {
             }
             if (args.length == 3 && args[2].equalsIgnoreCase("offline")) {
                 for (UUID uuid : LoggedPlayers.getAllUUIDs()) {
-                    TokenManager.removeTokens(uuid, amount);
                     OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
-                    if (player.isOnline())
-                        player.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
+                    if (TokenManager.removeTokens(uuid, amount) && player.isOnline() && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(player.getUniqueId())))
+                        Objects.requireNonNull(player.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
+                    String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+                    TransactionLogs.log(senderName + " removed " + amount + " tokens from " + LoggedPlayers.getPlayerName(player.getUniqueId()) +". (removeall) Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
                 }
                 // send message
                 sender.sendMessage(Language.parse(Language.prefix + Language.adminRemoveAll.replaceAll("\\{amount}", Matcher.quoteReplacement(LoggedPlayers.getAllUUIDs().size() + "")), amount, parser));
             } else {
                 for (Player player : Bukkit.getOnlinePlayers()) {
-                    TokenManager.removeTokens(player.getUniqueId(), amount);
-                    player.getPlayer().sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
+                    if (TokenManager.removeTokens(player.getUniqueId(), amount) && !((sender instanceof Player) && ((Player) sender).getUniqueId().equals(player.getUniqueId())))
+                        player.sendMessage(Language.parse(Language.prefix + Language.playerTake, sender.getName(), amount, parser));
+                    String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
+                    TransactionLogs.log(senderName + " removed " + amount + " tokens from " + LoggedPlayers.getPlayerName(player.getUniqueId()) +". (removeall) Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
                 }
                 // send message
                 sender.sendMessage(Language.parse(Language.prefix + Language.adminRemoveAll.replaceAll("\\{amount}", Matcher.quoteReplacement(Bukkit.getOnlinePlayers().size() + "")), amount, parser));
@@ -288,6 +306,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                 return true;
             }
             ConfigOptions.loadConfigOptions();
+            Language.loadLanguageOptions();
             sender.sendMessage(Language.parse(Language.prefix + ChatColor.GREEN + "Reloaded NotTokensPremium " + NotTokensPremium.getInstance().getDescription().getVersion()));
         } else if (args[0].equalsIgnoreCase("deposit")) {
             // /tokens deposit (amount/all)
@@ -316,12 +335,13 @@ public class Commands implements CommandExecutor, TabCompleter {
             }
             // insufficient balance
             if (itemBalance < amount || amount == 0.0) {
-                sender.sendMessage(Language.parse(Language.prefix + Language.insufficientExchange.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(itemBalance))), parser));
+                sender.sendMessage(Language.parse(Language.prefix + Language.insufficientExchange,NumberFormatting.formatNumber(itemBalance), parser));
                 return true;
             }
             // deposit
             double tokensReceived = ItemExchange.deposit(player, amount);
-            sender.sendMessage(Language.parse(Language.prefix + Language.deposit.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount))).replaceAll("\\{balance}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())) + NumberFormatting.currencySuffix)), tokensReceived, parser));
+            sender.sendMessage(Language.parse(Language.prefix + Language.deposit.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount))), tokensReceived, parser));
+            TransactionLogs.log(player.getName() + " deposited " + amount + " exchange items in return for " + tokensReceived +" tokens. Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
         } else if (args[0].equalsIgnoreCase("withdraw")) {
             // /tokens withdraw (amount/all)
             // permission check
@@ -359,15 +379,28 @@ public class Commands implements CommandExecutor, TabCompleter {
             }
             // withdraw
             double tokensRemoved = ItemExchange.withdraw(player, amount);
-            sender.sendMessage(Language.parse(Language.prefix + Language.deposit.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount))).replaceAll("\\{balance}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())) + NumberFormatting.currencySuffix)), tokensRemoved, parser));
+            sender.sendMessage(Language.parse(Language.prefix + Language.deposit.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount))), tokensRemoved, parser));
+            TransactionLogs.log(player.getName() + " withdrew " + amount + " exchange items requiring a total of " + tokensRemoved +" tokens. Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
         } else {
-            sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
+            OfflinePlayer player = LoggedPlayers.getPlayer(args[0]);
+            if (player != null) {
+                // /tokens (player)
+                // permission check
+                if (!sender.hasPermission("nottokens.viewother")) {
+                    sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
+                    return true;
+                }
+                // send token balance message
+                sender.sendMessage(Language.parse(Language.prefix + Language.otherTokens, LoggedPlayers.getPlayerName(player.getUniqueId()), TokenManager.getTokens(player.getUniqueId()), parser));
+            } else {
+                sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
+            }
         }
         return true;
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String s, String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, Command command, @NotNull String s, String[] args) {
         if (!command.getName().equalsIgnoreCase("token"))
             return null;
         List<String> tab = new ArrayList<>();
@@ -401,7 +434,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             if (sender instanceof Player && sender.hasPermission("nottokens.exchange") && ItemExchange.enabled && (args[0].equalsIgnoreCase("deposit") || args[0].equalsIgnoreCase("withdraw"))) {
                 tab.add("all");
             }
-        } else if (args.length == 4) {
+        } else if (args.length == 3) {
             if (sender.hasPermission("nottokens.edit") && (args[0].equalsIgnoreCase("giveall")  || args[0].equalsIgnoreCase("removeall"))) {
                 tab.add("online");
                 tab.add("offline");

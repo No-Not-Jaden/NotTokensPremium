@@ -9,11 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
+import java.util.Objects;
 
-/**
- * tokens convert to item or command with withdraw/deposit
- * change update checker ID
- */
 public class NotTokensPremium extends JavaPlugin {
     private static NotTokensPremium instance;
     public boolean firstStart = false;
@@ -31,7 +28,7 @@ public class NotTokensPremium extends JavaPlugin {
             SkriptAddon addon = Skript.registerAddon(this);
             try {
                 addon.loadClasses("me.jadenp.nottokenspremium", "Skripts");
-                Bukkit.getLogger().info("Connected to Skript");
+                Bukkit.getLogger().info("[NotTokensPremium] Connected to Skript");
             } catch (IOException e) {
                 Bukkit.getLogger().warning(e.toString());
             }
@@ -49,27 +46,30 @@ public class NotTokensPremium extends JavaPlugin {
         }
 
         // load configurations
+        TokenManager.loadTokenManager();
         ConfigOptions.loadConfigOptions();
+        TokenManager.startAutoConnectTask();
         Language.loadLanguageOptions();
         LoggedPlayers.loadLoggedPlayers();
         TransactionLogs.loadTransactionLogs();
-        TokenManager.loadTokenManager();
-        KillRewards.loadKillRewards();
 
-        Bukkit.getPluginCommand("nottokens").setExecutor(new Commands());
+
+        Objects.requireNonNull(Bukkit.getPluginCommand("nottokens")).setExecutor(new Commands());
         Bukkit.getPluginManager().registerEvents(new LoggedPlayers(), this);
         Bukkit.getPluginManager().registerEvents(new KillRewards(), this);
 
         // register plugin messaging to a proxy
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "bungeecord:main");
         this.getServer().getMessenger().registerIncomingPluginChannel(this, "bungeecord:main", new ProxyMessaging());
+        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "nottokenspremium:main");
+        this.getServer().getMessenger().registerIncomingPluginChannel(this, "nottokenspremium:main", new ProxyMessaging());
 
         // register PlaceholderAPI Expansion
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI"))
             new TokenExpansion().register();
 
         // update checker
-        if (ConfigOptions.updateNotification) {
+        if (ConfigOptions.updateNotification && resourceID != 0) {
             new UpdateChecker(this, resourceID).getVersion(version -> {
                 if (getDescription().getVersion().contains("dev"))
                     return;
@@ -120,6 +120,7 @@ public class NotTokensPremium extends JavaPlugin {
         try {
             TokenManager.saveTokens();
             LoggedPlayers.save();
+            TransactionLogs.saveTransactions();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

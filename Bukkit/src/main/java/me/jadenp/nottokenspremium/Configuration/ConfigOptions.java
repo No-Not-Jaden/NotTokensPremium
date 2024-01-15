@@ -1,5 +1,6 @@
 package me.jadenp.nottokenspremium.Configuration;
 
+import me.jadenp.nottokenspremium.Configuration.KillRewards.KillRewards;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.OldNotTokensAdapter;
 import me.jadenp.nottokenspremium.TokenManager;
@@ -19,6 +20,7 @@ public class ConfigOptions {
 
     public static void loadConfigOptions(){
         NotTokensPremium.getInstance().saveDefaultConfig();
+        NotTokensPremium.getInstance().reloadConfig();
         FileConfiguration config = NotTokensPremium.getInstance().getConfig();
 
         // adapt old config
@@ -32,8 +34,11 @@ public class ConfigOptions {
 
         // fill in any missing default settings
         for (String key : Objects.requireNonNull(config.getDefaults()).getKeys(true)) {
-            if (!config.isSet(key))
+           // Bukkit.getLogger().info("[key] " + key);
+            if (!config.isSet(key)) {
+                //Bukkit.getLogger().info("Not set -> " + config.getDefaults().get(key));
                 config.set(key, config.getDefaults().get(key));
+            }
         }
 
         NotTokensPremium.getInstance().saveConfig();
@@ -52,6 +57,7 @@ public class ConfigOptions {
 
         // load other config sections
         ItemExchange.loadExchange();
-        NumberFormatting.setCurrencyOptions(config.getConfigurationSection("number-formatting"));
+        NumberFormatting.setCurrencyOptions(Objects.requireNonNull(config.getConfigurationSection("number-formatting")));
+        KillRewards.loadKillRewards();
     }
 }
