@@ -1,6 +1,6 @@
-package me.jadenp.nottokenspremium.Configuration;
+package me.jadenp.nottokenspremium.configuration;
 
-import me.jadenp.nottokenspremium.Configuration.KillRewards.KillRewards;
+import me.jadenp.nottokenspremium.configuration.KillRewards.KillRewards;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.OldNotTokensAdapter;
 import me.jadenp.nottokenspremium.TokenManager;

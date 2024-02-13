@@ -1,6 +1,6 @@
-package me.jadenp.nottokenspremium.SQL;
+package me.jadenp.nottokenspremium.mySQL;
 
-import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
+import me.jadenp.nottokenspremium.configuration.ConfigOptions;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
 import org.bukkit.Bukkit;
@@ -9,8 +9,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.UUID;
 
 import static me.jadenp.nottokenspremium.TokenManager.tryToConnect;

@@ -1,9 +1,9 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
-import me.jadenp.nottokenspremium.Configuration.ItemExchange;
-import me.jadenp.nottokenspremium.Configuration.Language;
-import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.configuration.ConfigOptions;
+import me.jadenp.nottokenspremium.configuration.ItemExchange;
+import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.configuration.NumberFormatting;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;

@@ -2,15 +2,19 @@ package me.jadenp.nottokenspremium;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptAddon;
-import me.jadenp.nottokenspremium.Configuration.ConfigOptions;
-import me.jadenp.nottokenspremium.Configuration.KillRewards.KillRewards;
-import me.jadenp.nottokenspremium.Configuration.Language;
+import me.jadenp.nottokenspremium.configuration.ConfigOptions;
+import me.jadenp.nottokenspremium.configuration.KillRewards.KillRewards;
+import me.jadenp.nottokenspremium.configuration.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * SQL player list
+ * migrate tokens
+ */
 public class NotTokensPremium extends JavaPlugin {
     private static NotTokensPremium instance;
     public boolean firstStart = false;

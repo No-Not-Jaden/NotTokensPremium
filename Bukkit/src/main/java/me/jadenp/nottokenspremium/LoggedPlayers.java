@@ -1,11 +1,10 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.Configuration.Language;
+import me.jadenp.nottokenspremium.configuration.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -16,9 +15,8 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static me.jadenp.nottokenspremium.Configuration.ConfigOptions.updateNotification;
+import static me.jadenp.nottokenspremium.configuration.ConfigOptions.updateNotification;
 
 public class LoggedPlayers implements Listener {
 

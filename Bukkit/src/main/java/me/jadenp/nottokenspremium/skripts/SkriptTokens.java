@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.Skripts;
+package me.jadenp.nottokenspremium.skripts;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.classes.Changer;

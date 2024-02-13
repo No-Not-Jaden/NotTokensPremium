@@ -1,8 +1,8 @@
 package me.jadenp.nottokenspremium;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import me.jadenp.nottokenspremium.Configuration.Language;
-import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.configuration.NumberFormatting;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;

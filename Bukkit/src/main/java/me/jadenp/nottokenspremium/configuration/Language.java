@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.Configuration;
+package me.jadenp.nottokenspremium.configuration;
 
 import me.clip.placeholderapi.PlaceholderAPI;
 import me.jadenp.nottokenspremium.NotTokensPremium;

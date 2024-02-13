@@ -1,7 +1,7 @@
-package me.jadenp.nottokenspremium.Configuration.KillRewards;
+package me.jadenp.nottokenspremium.configuration.KillRewards;
 
-import me.jadenp.nottokenspremium.Configuration.Language;
-import me.jadenp.nottokenspremium.Configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.configuration.NumberFormatting;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
 import me.jadenp.nottokenspremium.TransactionLogs;

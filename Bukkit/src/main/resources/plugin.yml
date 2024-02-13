@@ -7,6 +7,7 @@ description: You get a token, and you get a tokens; you all get tokens
 softdepend:
   - PlaceholderAPI
   - Skript
+  - TokenManager
 commands:
   token:
     usage: /token

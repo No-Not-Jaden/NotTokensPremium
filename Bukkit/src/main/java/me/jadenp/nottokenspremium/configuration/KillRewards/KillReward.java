@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.Configuration.KillRewards;
+package me.jadenp.nottokenspremium.configuration.KillRewards;
 
 public class KillReward {
     private final double amount;

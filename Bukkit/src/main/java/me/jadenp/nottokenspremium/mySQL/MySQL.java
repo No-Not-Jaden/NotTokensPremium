@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.SQL;
+package me.jadenp.nottokenspremium.mySQL;
 
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import org.bukkit.Bukkit;
