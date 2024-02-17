@@ -8,6 +8,7 @@ softdepend:
   - PlaceholderAPI
   - Skript
   - TokenManager
+  - BeastTokens
 commands:
   token:
     usage: /token

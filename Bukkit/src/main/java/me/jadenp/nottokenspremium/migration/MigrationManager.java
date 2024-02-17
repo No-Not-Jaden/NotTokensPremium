@@ -1,10 +1,12 @@
 package me.jadenp.nottokenspremium.migration;
 
+import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -12,7 +14,7 @@ import java.util.UUID;
 public class MigrationManager {
     // to be read from file (if present)
     private static MigrationType currentMigrationType = MigrationType.NONE;
-    private static MigratablePlugin currentExternalTokenPlugin; // set with command or from file
+    private static MigratablePlugin currentExternalTokenPlugin = null; // set with command or from file
     private static List<UUID> migratedPlayers = new ArrayList<>(); // ^^^
     public enum MigrationType {
         // Switch current and external token values
@@ -36,8 +38,41 @@ public class MigrationManager {
     /**
      * Register migration
      */
-    public void loadConfiguration(ConfigurationSection configuration) {
+    public void loadConfig(ConfigurationSection configuration) {
+        File migrationFile = getMigrationFile();
+        // create file if it doesn't exist
+        if (!migrationFile.exists())
+            NotTokensPremium.getInstance().saveResource("migration.yml", false);
+        // load available migration plugins
         migratablePlugins = new MigratablePlugin[]{new TokenManagerClass(), new BeastTokensClass()};
+        // get the current migration type from file
+        try {
+            currentMigrationType = MigrationType.valueOf(configuration.getString("migration-type"));
+        } catch (IllegalArgumentException e) {
+            currentMigrationType = MigrationType.NONE;
+        }
+        // get the current migration plugin if there is a migration type set
+        if (currentMigrationType != MigrationType.NONE) {
+            String plugin = configuration.getString("plugin");
+            for (MigratablePlugin pl : migratablePlugins)
+                if (pl.getName().equalsIgnoreCase(plugin)) {
+                    currentExternalTokenPlugin = pl;
+                    break;
+                }
+            // reset migration type if there is not migratable plugin
+            if (currentExternalTokenPlugin == null)
+                currentMigrationType = MigrationType.NONE;
+        }
+        // get migrated players
+        List<String> uuidPlayers = configuration.getStringList("migrated-players");
+        migratedPlayers.clear();
+        for (String uuid : uuidPlayers)
+            migratedPlayers.add(UUID.fromString(uuid));
+
+    }
+
+    private File getMigrationFile() {
+        return new File(NotTokensPremium.getInstance().getDataFolder() + File.separator + "migration.yml");
     }
 
     public static void migrateTokens(MigrationType migrationType, String pluginName) throws RuntimeException {

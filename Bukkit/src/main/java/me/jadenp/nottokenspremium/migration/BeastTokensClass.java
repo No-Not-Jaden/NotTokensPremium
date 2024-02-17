@@ -1,6 +1,11 @@
 package me.jadenp.nottokenspremium.migration;
 
+import me.mraxetv.beasttokens.api.BeastTokensAPI;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
+import java.util.UUID;
 
 public class BeastTokensClass implements MigratablePlugin{
     public BeastTokensClass() {
@@ -8,7 +13,14 @@ public class BeastTokensClass implements MigratablePlugin{
     }
     @Override
     public double getTokens(Player player) {
+        BeastTokensAPI.getTokensManager().getAllPlayersBalance();
         return 0;
+    }
+
+    @Nullable
+    @Override
+    public Map<UUID, Double> getAllTokens() {
+        return null;
     }
 
     @Override
@@ -18,6 +30,6 @@ public class BeastTokensClass implements MigratablePlugin{
 
     @Override
     public String getName() {
-        return null;
+        return "BeastTokens";
     }
 }
