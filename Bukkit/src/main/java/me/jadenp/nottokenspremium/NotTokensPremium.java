@@ -2,9 +2,10 @@ package me.jadenp.nottokenspremium;
 
 import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptAddon;
-import me.jadenp.nottokenspremium.configuration.ConfigOptions;
-import me.jadenp.nottokenspremium.configuration.KillRewards.KillRewards;
-import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.settings.ConfigOptions;
+import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
+import me.jadenp.nottokenspremium.settings.Language;
+import me.jadenp.nottokenspremium.migration.MigrationManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -12,10 +13,13 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * SQL player list
- * migrate tokens
+ * mvn install:install-file -Dfile=C:\Users\jpate\IdeaProjects\mvnrepo\bt-api-3.13.3.jar -DgroupId=me.mraxetv.beasttokens.api -DartifactId=BeastTokensAPI -Dversion=3.13.3 -Dpackaging=jar -DgeneratePom=true
+ * SQL player list -
+ * migrate tokens -
  */
 public class NotTokensPremium extends JavaPlugin {
+
+
     private static NotTokensPremium instance;
     public boolean firstStart = false;
     public static boolean latestVersion = true;
@@ -56,6 +60,7 @@ public class NotTokensPremium extends JavaPlugin {
         Language.loadLanguageOptions();
         LoggedPlayers.loadLoggedPlayers();
         TransactionLogs.loadTransactionLogs();
+        MigrationManager.loadConfig();
 
 
         Objects.requireNonNull(Bukkit.getPluginCommand("nottokens")).setExecutor(new Commands());
@@ -65,8 +70,8 @@ public class NotTokensPremium extends JavaPlugin {
         // register plugin messaging to a proxy
         this.getServer().getMessenger().registerOutgoingPluginChannel(this, "bungeecord:main");
         this.getServer().getMessenger().registerIncomingPluginChannel(this, "bungeecord:main", new ProxyMessaging());
-        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "nottokenspremium:main");
-        this.getServer().getMessenger().registerIncomingPluginChannel(this, "nottokenspremium:main", new ProxyMessaging());
+        this.getServer().getMessenger().registerOutgoingPluginChannel(this, "nottokens:main");
+        this.getServer().getMessenger().registerIncomingPluginChannel(this, "nottokens:main", new ProxyMessaging());
 
         // register PlaceholderAPI Expansion
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI"))
@@ -117,6 +122,11 @@ public class NotTokensPremium extends JavaPlugin {
 
         firstStart = true;
 
+        if (ConfigOptions.sendBStats) {
+            int pluginId = 21262;
+            new Metrics(this, pluginId);
+        }
+
     }
 
     @Override
@@ -125,8 +135,13 @@ public class NotTokensPremium extends JavaPlugin {
             TokenManager.saveTokens();
             LoggedPlayers.save();
             TransactionLogs.saveTransactions();
+            MigrationManager.save();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
+
+
+
+
 }

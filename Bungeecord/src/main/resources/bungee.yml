@@ -1,0 +1,4 @@
+name: NotTokensPremium-Bungeecord
+version: '${project.version}'
+main: me.jadenp.bungeecord.NotTokensPremium
+author: Not_Jaden

@@ -6,6 +6,7 @@ all-mobs:
   rate: 0.1 # 0.1 is a 10% reward chance
 # manually adding mobs overrides all-mobs rate and amount
 # you can delete these if you don't want kill rewards to be different for these mobs
+# the commented out entities are not in Minecraft 1.8.8
 zombie: # entity type from https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/entity/EntityType.html
   amount: 1
   rate: 0.1
@@ -27,24 +28,24 @@ wither:
 ender_dragon:
   amount: 25
   rate: 0.1
-elder_guardian:
-  amount: 25
-  rate: 0.1
+#elder_guardian:
+#  amount: 25
+#  rate: 0.1
 iron_golem:
   amount: 5
   rate: 0.1
-wither_skeleton:
-  amount: 2
-  rate: 0.1
+#wither_skeleton:
+#  amount: 2
+#  rate: 0.1
 cave_spider:
   amount: 1
   rate: 0.1
-drowned:
-  amount: 2
-  rate: 0.1
+#drowned:
+#  amount: 2
+#  rate: 0.1
 blaze:
   amount: 1
   rate: 0.1
-zombified_piglin:
-  amount: 1
-  rate: 0.1
+#zombified_piglin:
+#  amount: 1
+#  rate: 0.1

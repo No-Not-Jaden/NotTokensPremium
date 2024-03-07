@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.configuration;
+package me.jadenp.nottokenspremium.settings;
 
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Matcher;
 
-import static me.jadenp.nottokenspremium.configuration.NumberFormatting.tryParse;
+import static me.jadenp.nottokenspremium.settings.NumberFormatting.tryParse;
 
 public class ItemExchange {
     private static String object;

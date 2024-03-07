@@ -1,6 +1,8 @@
 package me.jadenp.nottokenspremium.migration;
 
 import me.mraxetv.beasttokens.api.BeastTokensAPI;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,19 +15,24 @@ public class BeastTokensClass implements MigratablePlugin{
     }
     @Override
     public double getTokens(Player player) {
-        BeastTokensAPI.getTokensManager().getAllPlayersBalance();
-        return 0;
+        return BeastTokensAPI.getTokensManager().getTokens(player);
     }
 
     @Nullable
     @Override
     public Map<UUID, Double> getAllTokens() {
-        return null;
+        return BeastTokensAPI.getTokensManager().getAllPlayersBalance();
     }
 
     @Override
-    public void setTokens(Player player, double amount) {
+    public boolean isActiveMigration() {
+        return true;
+    }
 
+    @Override
+    public void setTokens(OfflinePlayer player, double amount) {
+        if (player.isOnline())
+            BeastTokensAPI.getTokensManager().setTokens(player.getPlayer(), amount);
     }
 
     @Override

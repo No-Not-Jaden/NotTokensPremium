@@ -35,6 +35,7 @@ permissions:
       - nottokens.top
       - nottokens.transfer
       - nottokens.balance
+      - nottokens.exchange
   nottokens.top:
     description: See who has the most tokens
     default: true

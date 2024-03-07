@@ -10,6 +10,7 @@
     <modules>
         <module>Bukkit</module>
         <module>Velocity</module>
+        <module>Bungeecord</module>
     </modules>
     <packaging>pom</packaging>
 

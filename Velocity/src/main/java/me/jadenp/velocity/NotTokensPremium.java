@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium;
+package me.jadenp.velocity;
 
 import com.google.common.io.ByteArrayDataInput;
 import com.google.common.io.ByteArrayDataOutput;
@@ -8,10 +8,10 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.Continuation;
-import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -25,7 +25,10 @@ import org.slf4j.Logger;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Plugin(
@@ -34,27 +37,25 @@ import java.util.concurrent.TimeUnit;
         version = "1.0",
         authors = {"Not_Jaden"}
 )
-public class NotTokensPremiumVelocity {
+public class NotTokensPremium {
 
     private final Logger logger;
     private final Path dataDirectory;
     private final ProxyServer proxy;
-    public static final MinecraftChannelIdentifier IDENTIFIER = MinecraftChannelIdentifier.from("nottokenspremium:main");
+    public static final MinecraftChannelIdentifier IDENTIFIER = MinecraftChannelIdentifier.from("nottokens:main");
     private static Map<UUID, Double> networkTokens;
     private static final Map<RegisteredServer, Map<UUID, String>> playersToLog = new HashMap<>();
-    private static NotTokensPremiumVelocity instance;
-
-    public static NotTokensPremiumVelocity getInstance() {
-        return instance;
-    }
-
-
+    private static NotTokensPremium instance;
     @Inject
-    public NotTokensPremiumVelocity(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
+    public NotTokensPremium(ProxyServer proxy, Logger logger, @DataDirectory Path dataDirectory) {
         instance = this;
+        this.dataDirectory = dataDirectory;
         this.proxy = proxy;
         this.logger = logger;
-        this.dataDirectory = dataDirectory;
+    }
+
+    public static NotTokensPremium getInstance() {
+        return instance;
     }
 
     @Subscribe
@@ -86,6 +87,8 @@ public class NotTokensPremiumVelocity {
         }).repeat(10L, TimeUnit.MINUTES).schedule();
     }
 
+
+
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
 
@@ -106,14 +109,14 @@ public class NotTokensPremiumVelocity {
 
         ServerConnection backend = (ServerConnection) event.getSource();
         // Ensure the identifier is what you expect before trying to handle the data
-        if (event.getIdentifier() != NotTokensPremiumVelocity.IDENTIFIER) {
+        if (event.getIdentifier() != IDENTIFIER) {
             return;
         }
 
         ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
         String channel = in.readUTF();
-        logger.info("Channel: " + channel);
-         if (channel.equalsIgnoreCase("Forward")) {
+        //logger.info("Channel: " + channel);
+        if (channel.equalsIgnoreCase("Forward")) {
             in.readUTF(); // ALL
             String subChannel = in.readUTF();
             switch (subChannel) {
@@ -255,7 +258,7 @@ public class NotTokensPremiumVelocity {
             networkTokens = new HashMap<>();
     }
 
-    private void editTokens(UUID uuid, double change) {
+    private static void editTokens(UUID uuid, double change) {
         if (networkTokens.containsKey(uuid))
             networkTokens.replace(uuid, networkTokens.get(uuid) + change);
         else
@@ -269,7 +272,7 @@ public class NotTokensPremiumVelocity {
         if (connectedServer.isPresent() && connectedServer.get().getServer().getPlayersConnected().size() == 1) {
             RegisteredServer server = connectedServer.get().getServer();
             proxy.getScheduler()
-                    .buildTask(this, () -> {
+                    .buildTask(NotTokensPremium.getInstance(), () -> {
                         ByteArrayOutputStream msgbytes = new ByteArrayOutputStream();
                         DataOutputStream msgout = new DataOutputStream(msgbytes);
                         try {
@@ -292,7 +295,7 @@ public class NotTokensPremiumVelocity {
                     .delay(2L, TimeUnit.SECONDS)
                     .schedule();
             proxy.getScheduler()
-                    .buildTask(this, () -> {
+                    .buildTask(NotTokensPremium.getInstance(), () -> {
                         if (!playersToLog.containsKey(server)) {
                             return;
                         }
@@ -326,5 +329,4 @@ public class NotTokensPremiumVelocity {
         }
         continuation.resume();
     }
-
 }

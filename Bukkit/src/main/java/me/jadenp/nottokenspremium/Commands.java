@@ -1,9 +1,11 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.configuration.ConfigOptions;
-import me.jadenp.nottokenspremium.configuration.ItemExchange;
-import me.jadenp.nottokenspremium.configuration.Language;
-import me.jadenp.nottokenspremium.configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.settings.ConfigOptions;
+import me.jadenp.nottokenspremium.settings.ItemExchange;
+import me.jadenp.nottokenspremium.settings.Language;
+import me.jadenp.nottokenspremium.settings.NumberFormatting;
+import me.jadenp.nottokenspremium.migration.MigratablePlugin;
+import me.jadenp.nottokenspremium.migration.MigrationManager;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -57,9 +59,53 @@ public class Commands implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.YELLOW + "/token removeall (amount) <online/offline>" + ChatColor.GOLD + " Remove tokens from all offline or online players");
             }
             if (sender.hasPermission("nottokens.admin")) {
+                sender.sendMessage(ChatColor.YELLOW + "/token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)" + ChatColor.GOLD + " Migrates another plugin's tokens into NotTokens");
                 sender.sendMessage(ChatColor.YELLOW + "/token reload" + ChatColor.GOLD + " Reloads this plugin");
             }
             sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ");
+        } else if (args[0].equalsIgnoreCase("migrate")) {
+            // /token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)
+            if (!sender.hasPermission("nottokens.admin") || !(sender instanceof Player)) {
+                sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
+                return true;
+            }
+            // wrong number of arguments
+            if (args.length != 3) {
+                sender.sendMessage(Language.parse(Language.prefix + ChatColor.YELLOW + "/token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)" + ChatColor.GOLD + " Migrates another plugin's tokens into NotTokens", parser));
+                return true;
+            }
+            MigrationManager.MigrationType migrationType;
+            try {
+                migrationType = MigrationManager.MigrationType.valueOf(args[2].toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // unknown migration type
+                sender.sendMessage(Language.parse(Language.prefix + ChatColor.YELLOW + "/token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)" + ChatColor.GOLD + " Migrates another plugin's tokens into NotTokens", parser));
+                return true;
+            }
+            try {
+                MigrationManager.migrateTokens(migrationType, args[1]); // do migration
+                MigratablePlugin plugin = MigrationManager.getCurrentExternalTokenPlugin(); // specified plugin
+                if (plugin == null || migrationType == MigrationManager.MigrationType.NONE) {
+                    // migration stopped
+                    sender.sendMessage(Language.parse(Language.prefix + ChatColor.RED + "Migration has been stopped."));
+                    TransactionLogs.log(parser.getName() + " has stopped migration.");
+                    return true;
+                }
+                // migration status - active or complete
+                if (plugin.isActiveMigration()) {
+                    sender.sendMessage(Language.parse(Language.prefix + ChatColor.YELLOW + "Migration has started. Players will have their tokens automatically migrated when they join."));
+                    sender.sendMessage(Language.parse(Language.prefix + ChatColor.YELLOW + "To stop migration, do " + ChatColor.GOLD + "/nottokens migrate NONE NONE"));
+                    TransactionLogs.log(parser.getName() + " has started migration. Plugin: " + plugin.getName() + " Type: " + migrationType.name());
+                } else {
+                    sender.sendMessage(Language.parse(Language.prefix + ChatColor.GREEN + "Migration has been completed."));
+                    TransactionLogs.log(parser.getName() + " has completed a migration. Plugin: " + plugin.getName() + " Type: " + migrationType.name());
+                }
+            } catch (RuntimeException e) {
+                // error in migration
+                sender.sendMessage(Language.parse(Language.prefix + ChatColor.RED + "Could not migrate plugin: " + ChatColor.DARK_RED + e.getMessage()));
+                Bukkit.getLogger().warning("[NotTokensPremium] Migration Error: ");
+                Bukkit.getLogger().warning(e.toString());
+            }
         } else if (args[0].equalsIgnoreCase("transfer")) {
             // /token transfer
             if (!sender.hasPermission("nottokens.transfer") || !(sender instanceof Player)) {
@@ -424,8 +470,10 @@ public class Commands implements CommandExecutor, TabCompleter {
                 tab.add("giveall");
                 tab.add("removeall");
             }
-            if (sender.hasPermission("nottokens.admin"))
+            if (sender.hasPermission("nottokens.admin")) {
                 tab.add("reload");
+                tab.add("migrate");
+            }
         } else if (args.length == 2) {
             if (sender.hasPermission("nottokens.transfer") && args[0].equalsIgnoreCase("transfer"))
                 tab.addAll(LoggedPlayers.getOnlinePlayerNames());
@@ -434,10 +482,22 @@ public class Commands implements CommandExecutor, TabCompleter {
             if (sender instanceof Player && sender.hasPermission("nottokens.exchange") && ItemExchange.enabled && (args[0].equalsIgnoreCase("deposit") || args[0].equalsIgnoreCase("withdraw"))) {
                 tab.add("all");
             }
+            if (sender.hasPermission("nottokens.admin") && args[0].equalsIgnoreCase("migrate")) {
+                tab.addAll(MigrationManager.getEnabledPlugins());
+                tab.add("NONE");
+            }
         } else if (args.length == 3) {
             if (sender.hasPermission("nottokens.edit") && (args[0].equalsIgnoreCase("giveall")  || args[0].equalsIgnoreCase("removeall"))) {
                 tab.add("online");
                 tab.add("offline");
+            }
+            if (sender.hasPermission("nottokens.admin") && args[0].equalsIgnoreCase("migrate")) {
+                tab.add("SWAP");
+                tab.add("COPY");
+                tab.add("TRANSFER");
+                tab.add("ADD");
+                tab.add("REPLACE");
+                tab.add("NONE");
             }
         }
 

@@ -15,18 +15,22 @@ import java.util.*;
 public class ProxyMessaging implements PluginMessageListener, Listener {
     private static boolean connectedBefore = false;
 
+    /**
+     * Check if the proxy has been connected since server start
+     * @return True if the proxy has connected to the plugin since the server has started
+     */
     public static boolean hasConnectedBefore() {
         return connectedBefore;
     }
 
     @Override
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte @NotNull [] bytes) {
-        if (!channel.equals("nottokenspremium:main"))
+        if (!channel.equals("nottokens:main"))
             return;
         connectedBefore = true;
         ByteArrayDataInput in = ByteStreams.newDataInput(bytes);
         String subChannel = in.readUTF();
-        Bukkit.getLogger().info(subChannel);
+        //Bukkit.getLogger().info(subChannel);
         switch (subChannel) {
             case "ReceiveConnection":
                 short savedPlayers = in.readShort();
@@ -46,8 +50,9 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
                 String playerList = in.readUTF(); // CSV (Comma-Separated Values)
 
                 String[] splitList = playerList.split(",");
-                Bukkit.getLogger().info("Received PlayerList: " + Arrays.toString(splitList));
+                //Bukkit.getLogger().info("Received PlayerList: " + Arrays.toString(splitList));
                 // send them over to LoggedPlayers
+                LoggedPlayers.clearOnlinePlayers();
                 LoggedPlayers.receiveNetworkPlayers(List.of(splitList));
                 break;
             case "Forward": {
@@ -71,7 +76,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
                                     Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from the text: " + uuid + " (" + tokenChange + " token change)");
                                 }
                             } catch (EOFException e) {
-                                Bukkit.getLogger().info("Reached End");
+                                //Bukkit.getLogger().info("Reached End");
                                 break;
                             } catch (IOException e) {
                                 Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
@@ -140,7 +145,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
                             }
 
                         } catch (EOFException e) {
-                            Bukkit.getLogger().info("Reached End");
+                            //Bukkit.getLogger().info("Reached End");
                             break;
                         } catch (IOException e) {
                             Bukkit.getLogger().warning("[NotTokensPremium] Error receiving message from proxy!");
@@ -196,7 +201,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
         // send proxy message
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(uuid.toString(), tokenChange), "PlayerTokenUpdate");
-            sendMessage("nottokenspremium:main", message);
+            sendMessage("nottokens:main", message);
         } catch (IOException e) {
             Bukkit.getLogger().warning("Could not send a token update for " + LoggedPlayers.getPlayerName(uuid));
             Bukkit.getLogger().warning(e.toString());
@@ -212,7 +217,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
         // send proxy message
         try {
             byte[] message = wrapGlobalMessage(encodeMessage(playerTokens), "ServerTokenUpdate");
-            sendMessage("nottokenspremium:main", message);
+            sendMessage("nottokens:main", message);
         } catch (IOException e) {
             Bukkit.getLogger().warning("Could not send a server token update.");
             Bukkit.getLogger().warning(e.toString());
@@ -276,7 +281,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("PlayerList");
         out.writeUTF("ALL");
-        return sendMessage("nottokenspremium:main", out.toByteArray());
+        return sendMessage("nottokens:main", out.toByteArray());
     }
 
     /**
@@ -303,7 +308,7 @@ public class ProxyMessaging implements PluginMessageListener, Listener {
             Bukkit.getLogger().warning(e.toString());
             return;
         }
-        sendMessage("nottokenspremium:main", wrapGlobalMessage(msgbytes, "LogPlayer"));
+        sendMessage("nottokens:main", wrapGlobalMessage(msgbytes, "LogPlayer"));
     }
 
 

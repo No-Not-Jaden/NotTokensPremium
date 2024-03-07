@@ -1,8 +1,8 @@
 package me.jadenp.nottokenspremium;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import me.jadenp.nottokenspremium.configuration.Language;
-import me.jadenp.nottokenspremium.configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.settings.Language;
+import me.jadenp.nottokenspremium.settings.NumberFormatting;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
@@ -61,6 +61,7 @@ public class TokenExpansion extends PlaceholderExpansion {
             return TokenManager.getTokens(player.getUniqueId()) + "";
         }
         if (identifier.startsWith("top")) {
+            // %nottokens_top_<x>%
             int amount;
             try {
                 amount = Integer.parseInt(identifier.substring(identifier.indexOf("_") + 1));

@@ -61,6 +61,11 @@ database:
   migrate-local-data: true
   # automatically try to connect to the database if a connection was lost
   auto-connect: false
+  # the id of the server used to get all players on the network
+  # this needs to be different for all servers connected to the same database
+  server-id: 1
+# send your server statistics with bstats
+send-bstats: true
 
 # you do not need to worry about this
 # whether the old NotTokens config has been adapted to this one

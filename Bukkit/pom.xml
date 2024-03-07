@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>NotTokensPremium-Bukkit</artifactId>
-    <version>dev_1.0.0.41</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -106,8 +106,8 @@
 
     <repositories>
         <repository>
-            <id>spigotmc-repo</id>
-            <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+            <id>papermc-repo</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
         <repository>
             <id>sonatype</id>
@@ -176,6 +176,11 @@
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>me.mraxetv.beasttokens.api</groupId>
+            <artifactId>BeastTokensAPI</artifactId>
+            <version>3.13.3</version>
         </dependency>
     </dependencies>
 </project>

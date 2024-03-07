@@ -1,14 +1,18 @@
 package me.jadenp.nottokenspremium.mySQL;
 
-import me.jadenp.nottokenspremium.configuration.ConfigOptions;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
+import me.jadenp.nottokenspremium.settings.ConfigOptions;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.UUID;
 
 import static me.jadenp.nottokenspremium.TokenManager.tryToConnect;
@@ -59,6 +63,97 @@ public class SQLGetter {
                 }, 40L);
             } else {
                 createTable();
+            }
+        }
+    }
+
+    public void createOnlinePlayerTable() {
+        PreparedStatement ps;
+        try {
+            ps = SQL.getConnection().prepareStatement("CREATE TABLE IF NOT EXISTS token_players" +
+                    "(" +
+                    "    uuid CHAR(36) NOT NULL," +
+                    "    name VARCHAR(16) NOT NULL," +
+                    "    id INT DEFAULT 0 NOT NULL," +
+                    "    PRIMARY KEY (uuid)" +
+                    ");");
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().warning(e.toString());
+        }
+    }
+    private long lastPlayerListRequest = 0;
+    private final List<OfflinePlayer> onlinePlayers = new ArrayList<>();
+    public List<OfflinePlayer> getOnlinePlayers() {
+        if (lastPlayerListRequest + 5000 > System.currentTimeMillis()) {
+            if (onlinePlayers.isEmpty())
+                onlinePlayers.addAll(Bukkit.getOnlinePlayers());
+            return onlinePlayers;
+        }
+        lastPlayerListRequest = System.currentTimeMillis();
+        return getNetworkPlayers();
+    }
+    private List<OfflinePlayer> getNetworkPlayers() {
+        List<OfflinePlayer> networkPlayers = new ArrayList<>();
+        try {
+            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid FROM token_players;");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                String uuid = rs.getString("uuid");
+                try {
+                    networkPlayers.add(Bukkit.getOfflinePlayer(UUID.fromString(uuid)));
+                } catch (IllegalArgumentException e) {
+                    Bukkit.getLogger().warning("[NotTokensPremium] Removing invalid UUID on database: " + uuid);
+                    PreparedStatement ps1 = SQL.getConnection().prepareStatement("DELETE FROM token_players WHERE uuid = ?;");
+                    ps1.setString(1, uuid);
+                    ps1.executeUpdate();
+                }
+            }
+        } catch (SQLException e){
+            if (reconnect()){
+                return getNetworkPlayers();
+            }
+        }
+        onlinePlayers.clear();
+        onlinePlayers.addAll(networkPlayers);
+        return networkPlayers;
+    }
+    public void refreshOnlinePlayers() {
+        try {
+            PreparedStatement ps = SQL.getConnection().prepareStatement("DELETE FROM token_players WHERE id = ?;");
+            ps.setInt(1, SQL.getServerID());
+            ps.executeUpdate();
+        } catch (SQLException e){
+            if (reconnect()){
+                refreshOnlinePlayers();
+            }
+        }
+        for (Player player : Bukkit.getOnlinePlayers())
+            login(player);
+    }
+    public void logout(Player player) {
+        try {
+            PreparedStatement ps = SQL.getConnection().prepareStatement("DELETE FROM token_players WHERE uuid = ? AND id = ?;");
+            ps.setString(1, player.getUniqueId().toString());
+            ps.setInt(2, SQL.getServerID());
+            ps.executeUpdate();
+        } catch (SQLException e){
+            if (reconnect()){
+                logout(player);
+            }
+        }
+    }
+    public void login(Player player) {
+        try {
+            PreparedStatement ps = SQL.getConnection().prepareStatement("INSERT INTO token_players(uuid, name, id) VALUES(?, ?, ?) ON DUPLICATE KEY UPDATE id = ?;");
+            ps.setString(1, player.getUniqueId().toString());
+            ps.setString(2, player.getName());
+            ps.setInt(3, SQL.getServerID());
+            ps.setInt(4, SQL.getServerID());
+            ps.executeUpdate();
+        } catch (SQLException e){
+            if (reconnect()){
+                login(player);
             }
         }
     }
@@ -133,11 +228,11 @@ public class SQLGetter {
      * @param uuid UUID of the player
      * @param amount Amount of tokens to be set as the new balance
      */
-    public void setTokens(UUID uuid, long amount) {
+    public void setTokens(UUID uuid, double amount) {
         try {
             PreparedStatement ps = SQL.getConnection().prepareStatement("REPLACE player_tokens(uuid, tokens) VALUES(? ,?);");
             ps.setString(1, uuid.toString());
-            ps.setLong(2, amount);
+            ps.setDouble(2, amount);
             ps.executeUpdate();
         } catch (SQLException e){
             if (reconnect()){

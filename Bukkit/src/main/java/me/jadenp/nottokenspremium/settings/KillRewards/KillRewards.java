@@ -1,10 +1,10 @@
-package me.jadenp.nottokenspremium.configuration.KillRewards;
+package me.jadenp.nottokenspremium.settings.KillRewards;
 
-import me.jadenp.nottokenspremium.configuration.Language;
-import me.jadenp.nottokenspremium.configuration.NumberFormatting;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
 import me.jadenp.nottokenspremium.TransactionLogs;
+import me.jadenp.nottokenspremium.settings.Language;
+import me.jadenp.nottokenspremium.settings.NumberFormatting;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;

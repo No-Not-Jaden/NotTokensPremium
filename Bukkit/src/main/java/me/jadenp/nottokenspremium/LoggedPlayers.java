@@ -1,6 +1,7 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.migration.MigrationManager;
+import me.jadenp.nottokenspremium.settings.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
@@ -8,6 +9,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.Nonnull;
@@ -16,7 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-import static me.jadenp.nottokenspremium.configuration.ConfigOptions.updateNotification;
+import static me.jadenp.nottokenspremium.settings.ConfigOptions.updateNotification;
 
 public class LoggedPlayers implements Listener {
 
@@ -159,6 +161,30 @@ public class LoggedPlayers implements Listener {
             }
         }.runTaskLater(NotTokensPremium.getInstance(), 5);
 
+        if (TokenManager.getSQL().isConnected()) {
+            TokenManager.getData().login(event.getPlayer());
+            // migrate local tokens
+            // delay is to wait if a proxy will connect
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (TokenManager.isSavingLocally()) {
+                            if (TokenManager.migrateToSQL()) {
+                                Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
+                            }
+                        }
+                    }
+                }.runTaskLater(NotTokensPremium.getInstance(), 100L);
+        }
+
+        MigrationManager.onJoin(event.getPlayer());
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        onlinePlayers.remove(event.getPlayer().getName());
+        if (TokenManager.getSQL().isConnected())
+            TokenManager.getData().logout(event.getPlayer());
     }
 
     /**
@@ -166,7 +192,6 @@ public class LoggedPlayers implements Listener {
      * @param players Additional players coming in the form of (username):(uuid)
      */
     public static void receiveNetworkPlayers(List<String> players) {
-        onlinePlayers.clear();
         for (String player : players) {
             if (player.isEmpty())
                 continue;
@@ -185,8 +210,18 @@ public class LoggedPlayers implements Listener {
      * Updates online players with accurate values
      */
     public static void updateOnlinePlayers() {
+        onlinePlayers.clear();
         if (!(!Bukkit.getOnlinePlayers().isEmpty() && ProxyMessaging.requestPlayerList()))
             receiveNetworkPlayers(new ArrayList<>());
+        if (TokenManager.getSQL().isConnected())
+            TokenManager.getData().getOnlinePlayers().forEach(player -> onlinePlayers.add(player.getName()));
+    }
+
+    /**
+     * Clear the recorded online players
+     */
+    public static void clearOnlinePlayers() {
+        onlinePlayers.clear();
     }
 
     public static List<String> getOnlinePlayerNames() {

@@ -1,7 +1,7 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.configuration.KillRewards.KillRewards;
-import me.jadenp.nottokenspremium.configuration.Language;
+import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
+import me.jadenp.nottokenspremium.settings.Language;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;

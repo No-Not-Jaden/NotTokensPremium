@@ -1,9 +1,9 @@
-package me.jadenp.nottokenspremium.configuration;
+package me.jadenp.nottokenspremium.settings;
 
-import me.jadenp.nottokenspremium.configuration.KillRewards.KillRewards;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.OldNotTokensAdapter;
 import me.jadenp.nottokenspremium.TokenManager;
+import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -17,6 +17,7 @@ public class ConfigOptions {
     public static List<String> leaderboardExclusion = new ArrayList<>();
     public static boolean autoConnect;
     public static boolean updateNotification;
+    public static boolean sendBStats;
 
     public static void loadConfigOptions(){
         NotTokensPremium.getInstance().saveDefaultConfig();
@@ -48,6 +49,7 @@ public class ConfigOptions {
         leaderboardExclusion = config.getStringList("leaderboard-exclusion");
         autoConnect = config.getBoolean("database.auto-connect");
         updateNotification = config.getBoolean("update-notification");
+        sendBStats = config.getBoolean("send-bstats");
 
         // update condensed spam option
         if (tokenMessageInterval > 0 && !TokenManager.isTokenMessagingActing())

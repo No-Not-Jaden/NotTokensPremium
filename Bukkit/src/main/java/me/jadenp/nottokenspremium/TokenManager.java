@@ -1,9 +1,9 @@
 package me.jadenp.nottokenspremium;
 
-import me.jadenp.nottokenspremium.configuration.ConfigOptions;
-import me.jadenp.nottokenspremium.configuration.ItemExchange;
-import me.jadenp.nottokenspremium.configuration.Language;
-import me.jadenp.nottokenspremium.configuration.NumberFormatting;
+import me.jadenp.nottokenspremium.settings.ConfigOptions;
+import me.jadenp.nottokenspremium.settings.ItemExchange;
+import me.jadenp.nottokenspremium.settings.Language;
+import me.jadenp.nottokenspremium.settings.NumberFormatting;
 import me.jadenp.nottokenspremium.mySQL.MySQL;
 import me.jadenp.nottokenspremium.mySQL.SQLGetter;
 import org.bukkit.Bukkit;
@@ -40,9 +40,26 @@ public class TokenManager {
      */
     private static final Map<UUID, Double> tokenTransmissionQueue = new HashMap<>();
     /**
-     * The current token balances on the server
+     * The current token balances on the server.
+     * This is accurate unless SQL is connected
      */
     private static final Map<UUID, Double> currentServerTokens = new HashMap<>();
+
+    /**
+     * Get the active SQL Connection
+     * @return The active SQL Connection
+     */
+    public static MySQL getSQL() {
+        return SQL;
+    }
+
+    /**
+     * Get the SQLGetter object as data
+     * @return The SQL Data
+     */
+    public static SQLGetter getData() {
+        return data;
+    }
 
     /**
      * Load token manager system
@@ -62,9 +79,7 @@ public class TokenManager {
 
         SQL = new MySQL();
         data = new SQLGetter(SQL);
-        if (tryToConnect()) {
-            Bukkit.getLogger().info("[NotTokensPremium] SQL Database Connected!.");
-        }
+        tryToConnect(); // try to connect to database
 
 
         try {
@@ -138,6 +153,14 @@ public class TokenManager {
     }
 
     /**
+     * Checks if tokens are be saved locally
+     * @return True if there are tokens in currentServerTokens
+     */
+    public static boolean isSavingLocally() {
+        return currentServerTokens.entrySet().stream().anyMatch(entry -> entry.getValue() != 0.0);
+    }
+
+    /**
      * Try to connect to the SQL Database. Data will be migrated if that option is enabled.
      * @return True if the database was connected successfully
      */
@@ -153,37 +176,65 @@ public class TokenManager {
             if (SQL.isConnected()) {
                 Bukkit.getLogger().info("[NotTokensPremium] SQL database is connected!");
                 data.createTable();
-                if (!currentServerTokens.isEmpty() && SQL.isMigrateLocalData()) {
-                    Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
-                    // add entries to database
-                    for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
-                        if (entry.getValue() != 0.0)
-                            data.giveTokens(entry.getKey(), entry.getValue());
-                    }
-                    if (ProxyMessaging.hasConnectedBefore())
-                        eraseProxyTokens();
-                    currentServerTokens.clear();
-                    TransactionLogs.log("Migrated all tokens to an SQL database.");
-                }
+                data.createOnlinePlayerTable();
+                // usually would migrate tokens here, but this doesn't work if a proxy is connected
                 int rows = data.removeExtraData();
                 if (NotTokensPremium.getInstance().firstStart) {
                     Bukkit.getLogger().info("Cleared up " + rows + " unused rows in the database!");
                 }
+                data.refreshOnlinePlayers();
             }
         }
         return true;
     }
 
     /**
+     * Migrate current server tokens to a connected SQL database.
+     * To migrate, these requirements will be checked:
+     * 1) SQL is connected
+     * 2) There are locally stored tokens
+     * 3) migrate-local-data is set to true in the config
+     * 4) There is at least 1 player online
+     * @return True if tokens were migrated
+     */
+    public static boolean migrateToSQL(){
+        boolean change = false;
+        // check if migration should occur
+        if (SQL.isConnected() && !currentServerTokens.isEmpty() && SQL.isMigrateLocalData() && !Bukkit.getOnlinePlayers().isEmpty()) {
+            //Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
+            // add entries to database
+            for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
+                if (entry.getValue() != 0.0) {
+                    data.giveTokens(entry.getKey(), entry.getValue());
+                    change = true;
+                }
+            }
+            if (change) {
+                if (ProxyMessaging.hasConnectedBefore())
+                    eraseProxyTokens();
+                currentServerTokens.clear();
+                TransactionLogs.log("Migrated all tokens to an SQL database.");
+            }
+        }
+        return change;
+    }
+
+    /**
      * Erases all tokens from the proxy. This should be followed up with a currentServerTokens.clear();
      */
     private static void eraseProxyTokens() {
+        // load up this map with the negative values of current tokens
         Map<UUID, Double> playerTokens = new HashMap<>();
         for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
             playerTokens.put(entry.getKey(), -1 * entry.getValue());
         }
         tokenTransmissionQueue.clear();
-        ProxyMessaging.sendServerTokenUpdate(playerTokens);
+        // transmit to proxy or save to queue if no messages can be sent (no players online)
+        if (Bukkit.getOnlinePlayers().isEmpty()) {
+            tokenTransmissionQueue.putAll(playerTokens);
+        } else {
+            ProxyMessaging.sendServerTokenUpdate(playerTokens);
+        }
     }
 
     /**
@@ -205,6 +256,16 @@ public class TokenManager {
                 break;
         }
         return cutList;
+    }
+
+    /**
+     * Get a map of all the recorded tokens
+     * @return All saved tokens
+     */
+    public static Map<UUID, Double> getAllTokens() {
+        if (SQL.isConnected())
+            return data.getTopTokens(LoggedPlayers.getAllUUIDs().size());
+        return currentServerTokens;
     }
 
     /**
@@ -304,10 +365,12 @@ public class TokenManager {
             }
         } else {
             // update SQL database if it is connected
+            // this could be replaced with data.setTokens(uuid, amount);
+            // the only difference is the sql command - UPDATE is more efficient than REPLACE
             if (difference < 0)
-                data.removeTokens(uuid, -1 * amount);
+                data.removeTokens(uuid, -1 * difference);
             else if (difference > 0)
-                data.giveTokens(uuid, amount);
+                data.giveTokens(uuid, difference);
         }
 
         // check to send message or add to queue
@@ -338,38 +401,30 @@ public class TokenManager {
 
     /**
      * Connect to the proxy and load all tokens stored there
+     * This is to be triggered by a message from the proxy
      * @param serverTokens Tokens stored on the proxy
      */
     public static void connectProxy(Map<UUID, Double> serverTokens) {
         if (!tokenTransmissionQueue.isEmpty()) {
+            // send local changes
             if (Bukkit.getOnlinePlayers().isEmpty())
                 return; // nothing to receive current tokens
             ProxyMessaging.sendServerTokenUpdate(tokenTransmissionQueue);
         }
+        // replace current tokens with tokens from the proxy
         currentServerTokens.clear();
-        for (Map.Entry<UUID, Double> entry : serverTokens.entrySet())
-            Bukkit.getLogger().info(entry.getKey() + ":" + entry.getValue());
+        /*for (Map.Entry<UUID, Double> entry : serverTokens.entrySet())
+            Bukkit.getLogger().info(entry.getKey() + ":" + entry.getValue());*/
         currentServerTokens.putAll(serverTokens);
+        // add local changes to current tokens to sync the amounts
         for (Map.Entry<UUID, Double> entry : tokenTransmissionQueue.entrySet()) {
             if (currentServerTokens.containsKey(entry.getKey()))
                 currentServerTokens.replace(entry.getKey(), currentServerTokens.get(entry.getKey()) + entry.getValue());
             else
                 currentServerTokens.put(entry.getKey(), entry.getValue());
         }
-        tokenTransmissionQueue.clear();
+        tokenTransmissionQueue.clear(); // clear local changes
         Bukkit.getLogger().info("[NotTokensPremium] Connected to proxy!");
-        if (SQL.isConnected() && SQL.isMigrateLocalData()) {
-            // add entries to database
-            for (Map.Entry<UUID, Double> entry : currentServerTokens.entrySet()) {
-                if (entry.getValue() != 0.0)
-                    data.giveTokens(entry.getKey(), entry.getValue());
-            }
-            eraseProxyTokens();
-            currentServerTokens.clear();
-            Bukkit.getLogger().info("[NotTokensPremium] Migrated proxy tokens to the SQL database.");
-            TransactionLogs.log("Migrated all tokens to an SQL database.");
-        }
-
     }
 
 

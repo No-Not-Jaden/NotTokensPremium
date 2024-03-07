@@ -1,4 +1,4 @@
-package me.jadenp.nottokenspremium.configuration;
+package me.jadenp.nottokenspremium.settings;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

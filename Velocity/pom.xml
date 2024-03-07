@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>NotTokensPremium-Velocity</artifactId>
-    <version>dev_1.0.0.21</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -31,7 +31,6 @@
                         <filtering>true</filtering>
                     </resource>
                 </resources>
-
             </build>
         </profile>
     </profiles>
@@ -98,11 +97,6 @@
             </plugin>
         </plugins>
     </build>
-
-    <reporting>
-        <plugins>
-        </plugins>
-    </reporting>
 
     <repositories>
         <repository>
