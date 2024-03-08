@@ -102,8 +102,7 @@ command /removetokens &#60;player> &#60;number>:
        remove arg-2 from tokens of arg-1
     </pre>
 <h1>Migratable Plugins</h1>
-<a>The tokens from these plugins can be migrated using the in-game-command: <code>/nottokens migrate (plugin name)
-    (SWAP/ADD/TRANSFER/COPY/NONE)</code></a>
+<a>The tokens from these plugins can be migrated using the in-game-command: <code>/nottokens migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)</code></a>
 <ul>
     <li>TokenManager</li>
     <li>BeastTokens</li>
