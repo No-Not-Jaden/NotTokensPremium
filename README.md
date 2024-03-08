@@ -78,7 +78,7 @@ nottokens.admin          -   Reload the plugin or migrate another plugin’s tok
     <img src="https://i.imgur.com/cJk6c08.png" alt="Dependencies">
 </p>
 <p><a>All dependencies here are optional addons.</a>
-<h1>PlaceholderAPI</h1>
+<h1><a href="https://www.spigotmc.org/resources/placeholderapi.6245/">PlaceholderAPI</a></h1>
 <a>For the use in item exchange and NotTokens's placeholders shown below.</a>
 <ul>
     <li>%nottokens_amount% - Token amount.</li>
@@ -87,7 +87,7 @@ nottokens.admin          -   Reload the plugin or migrate another plugin’s tok
     <li>%nottokens_suffix% - Currency suffix.</li>
     <li>%nottokens_top_&#60;x>% - Leaderboard text for the player at rank &#60;x>.</li>
 </ul>
-<h1>Skript</h1>
+<h1><a href="https://www.spigotmc.org/resources/skript.114544/">Skript</a></h1>
 <a>For using Skripts that modify or read token values.</a>
 <br>Example Script</br>
 <pre>
@@ -99,13 +99,12 @@ command /settokens &#60;player> &#60;number>:
        set tokens of arg-1 to arg-2
 command /removetokens &#60;player> &#60;number>:
    trigger:
-       remove arg-2 from tokens of arg-1
-    </pre>
+       remove arg-2 from tokens of arg-1</pre>
 <h1>Migratable Plugins</h1>
 <a>The tokens from these plugins can be migrated using the in-game-command: <code>/nottokens migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)</code></a>
 <ul>
-    <li>TokenManager</li>
-    <li>BeastTokens</li>
+    <li><a href="https://www.spigotmc.org/resources/tokenmanager.8610/">TokenManager</a></li>
+    <li><a href="https://www.spigotmc.org/resources/tokenmanager.8610/">BeastTokens</a></li>
 </ul>
 </p>
 
