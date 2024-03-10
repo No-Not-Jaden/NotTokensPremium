@@ -48,19 +48,19 @@ public class Commands implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.YELLOW + "/token withdraw (amount/all) " + ChatColor.GOLD + " Withdraw " + ItemExchange.getObject() + " from your account requiring " + ItemExchange.getValue() + " tokens each.");
             }
             if (sender.hasPermission("nottokens.top"))
-                sender.sendMessage(ChatColor.YELLOW + "/token top" + ChatColor.GOLD + " View the players with the most tokens");
+                sender.sendMessage(ChatColor.YELLOW + "/token top " + ChatColor.GOLD + " View the players with the most tokens");
             if (sender.hasPermission("nottokens.viewother"))
-                sender.sendMessage(ChatColor.YELLOW + "/token (player)" + ChatColor.GOLD + " View a player's current token balance");
+                sender.sendMessage(ChatColor.YELLOW + "/token (player) " + ChatColor.GOLD + " View a player's current token balance");
             if (sender.hasPermission("nottokens.edit")) {
-                sender.sendMessage(ChatColor.YELLOW + "/token give (player) (amount)" + ChatColor.GOLD + " Give a player tokens");
-                sender.sendMessage(ChatColor.YELLOW + "/token remove (player) (amount)" + ChatColor.GOLD + " Remove a player's tokens");
-                sender.sendMessage(ChatColor.YELLOW + "/token set (player) (amount)" + ChatColor.GOLD + " Set a player's tokens");
-                sender.sendMessage(ChatColor.YELLOW + "/token giveall (amount) <online/offline>" + ChatColor.GOLD + " Give tokens to all offline or online players");
-                sender.sendMessage(ChatColor.YELLOW + "/token removeall (amount) <online/offline>" + ChatColor.GOLD + " Remove tokens from all offline or online players");
+                sender.sendMessage(ChatColor.YELLOW + "/token give (player) (amount) " + ChatColor.GOLD + " Give a player tokens");
+                sender.sendMessage(ChatColor.YELLOW + "/token remove (player) (amount) " + ChatColor.GOLD + " Remove a player's tokens");
+                sender.sendMessage(ChatColor.YELLOW + "/token set (player) (amount) " + ChatColor.GOLD + " Set a player's tokens");
+                sender.sendMessage(ChatColor.YELLOW + "/token giveall (amount) <online/offline> " + ChatColor.GOLD + " Give tokens to all offline or online players");
+                sender.sendMessage(ChatColor.YELLOW + "/token removeall (amount) <online/offline> " + ChatColor.GOLD + " Remove tokens from all offline or online players");
             }
             if (sender.hasPermission("nottokens.admin")) {
-                sender.sendMessage(ChatColor.YELLOW + "/token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/NONE)" + ChatColor.GOLD + " Migrates another plugin's tokens into NotTokens");
-                sender.sendMessage(ChatColor.YELLOW + "/token reload" + ChatColor.GOLD + " Reloads this plugin");
+                sender.sendMessage(ChatColor.YELLOW + "/token migrate (plugin name) (SWAP/ADD/TRANSFER/COPY/REPLACE/NONE) " + ChatColor.GOLD + " Migrates another plugin's tokens into NotTokens");
+                sender.sendMessage(ChatColor.YELLOW + "/token reload " + ChatColor.GOLD + " Reloads this plugin");
             }
             sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                                              ");
         } else if (args[0].equalsIgnoreCase("migrate")) {

@@ -23,7 +23,7 @@ public class NotTokensPremium extends JavaPlugin {
     private static NotTokensPremium instance;
     public boolean firstStart = false;
     public static boolean latestVersion = true;
-    public static int resourceID = 0;
+    public static int resourceID = 115480;
     public static int serverVersion = 20;
     public static NotTokensPremium getInstance() {
         return instance;

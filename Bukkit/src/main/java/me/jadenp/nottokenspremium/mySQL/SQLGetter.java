@@ -1,5 +1,6 @@
 package me.jadenp.nottokenspremium.mySQL;
 
+import me.jadenp.nottokenspremium.LoggedPlayers;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.TokenManager;
 import me.jadenp.nottokenspremium.settings.ConfigOptions;
@@ -245,25 +246,45 @@ public class SQLGetter {
 
     /**
      * Get an ordered list of players with the top tokens
-     * @param amount amount of players to get
+     * @param results amount of players to get
      * @return A LinkedHashMap with the players with the most tokens in the front of the map
      */
-    public LinkedHashMap<UUID, Double> getTopTokens(int amount) {
+    public LinkedHashMap<UUID, Double> getTopTokens(int results){
+        List<String> hiddenNames = ConfigOptions.leaderboardExclusion;
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < hiddenNames.size(); i++) {
+            OfflinePlayer player = LoggedPlayers.getPlayer(hiddenNames.get(i));
+            if (player == null) {
+                builder = new StringBuilder();
+                Bukkit.getLogger().warning("[NotTokensPremium] Error getting player: " + hiddenNames.get(i) + " from excluded players!");
+                break;
+            }
+            String uuid = player.getUniqueId().toString();
+            if (uuid == null)
+                continue;
+            if (i < hiddenNames.size() - 1)
+                builder.append(uuid).append("' AND uuid != '");
+            else
+                builder.append(uuid);
+        }
+
         try {
-            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid, tokens FROM player_tokens ORDER BY tokens DESC LIMIT ?;");
-            ps.setInt(1, amount);
-            ResultSet resultSet = ps.executeQuery();
+            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid, tokens FROM player_tokens WHERE uuid != '" + builder + "' ORDER BY tokens DESC LIMIT ?;");
+            ps.setInt(1, results);
+            ResultSet rs = ps.executeQuery();
             LinkedHashMap<UUID, Double> tokens = new LinkedHashMap<>();
-            while (resultSet.next()) {
-                tokens.put(UUID.fromString(resultSet.getString("uuid")), resultSet.getDouble("tokens"));
+            while (rs.next()){
+                String uuid = rs.getString("uuid");
+                tokens.put(UUID.fromString(uuid), rs.getDouble("tokens"));
             }
             return tokens;
         } catch (SQLException e){
             if (reconnect()){
-                return getTopTokens(amount);
+                return getTopTokens(results);
             }
         }
-        return TokenManager.getTopTokens(amount);
+        return TokenManager.getTopTokens(results);
     }
 
     /**

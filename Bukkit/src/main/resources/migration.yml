@@ -1,4 +1,5 @@
 # you do not need to change anything in this file
 migration-type: NONE
 plugin: NONE
+# uuids of players
 migrated-players: []
