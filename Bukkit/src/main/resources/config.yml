@@ -63,6 +63,7 @@ database:
   auto-connect: false
   # the id of the server used to get all players on the network
   # this needs to be different for all servers connected to the same database
+  # do not use 0
   server-id: 1
 # send your server statistics with bstats
 send-bstats: true

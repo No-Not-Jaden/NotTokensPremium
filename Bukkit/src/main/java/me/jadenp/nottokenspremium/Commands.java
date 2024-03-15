@@ -158,7 +158,7 @@ public class Commands implements CommandExecutor, TabCompleter {
             sender.sendMessage(Language.parse(Language.prefix + Language.leaderboard, parser));
             int rank = 1;
             for (Map.Entry<UUID, Double> entry : TokenManager.getTopTokens(10).entrySet()) {
-                sender.sendMessage(Language.parse(Language.leaderboardRank.replaceAll("\\{rank}", Matcher.quoteReplacement(rank + "")), entry.getValue(), Bukkit.getOfflinePlayer(entry.getKey())));
+                sender.sendMessage(Language.parse(Language.leaderboardRank.replaceAll("\\{rank}", Matcher.quoteReplacement(rank + "")), LoggedPlayers.getPlayerName(entry.getKey()), entry.getValue(), Bukkit.getOfflinePlayer(entry.getKey())));
                 rank++;
             }
             sender.sendMessage(ChatColor.DARK_GRAY + "" + ChatColor.STRIKETHROUGH + "                                           ");

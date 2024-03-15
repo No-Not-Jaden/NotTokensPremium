@@ -126,7 +126,7 @@ public class TokenManager {
                 configuration.set(entry.getKey().toString(), entry.getValue());
             }
             configuration.save(tokensHolder);
-        } else if (!SQL.isConnected()) {
+        } else {
             saveLocalTokens();
         }
     }
@@ -135,7 +135,7 @@ public class TokenManager {
      * Only save the tokens if not connected to any external storage
      */
     public static void autoSaveTokens() throws IOException {
-        if (!ProxyMessaging.hasConnectedBefore() && !SQL.isConnected())
+        if (!ProxyMessaging.hasConnectedBefore())
             saveLocalTokens();
         TransactionLogs.saveTransactions();
     }
@@ -176,7 +176,7 @@ public class TokenManager {
             if (SQL.isConnected()) {
                 Bukkit.getLogger().info("[NotTokensPremium] SQL database is connected!");
                 data.createTable();
-                data.createOnlinePlayerTable();
+                data.createLoggedPlayerTable();
                 // usually would migrate tokens here, but this doesn't work if a proxy is connected
                 int rows = data.removeExtraData();
                 if (NotTokensPremium.getInstance().firstStart) {

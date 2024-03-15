@@ -1,5 +1,7 @@
 package me.jadenp.nottokenspremium;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import me.jadenp.nottokenspremium.migration.MigrationManager;
 import me.jadenp.nottokenspremium.settings.Language;
 import org.bukkit.Bukkit;
@@ -16,7 +18,12 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static me.jadenp.nottokenspremium.settings.ConfigOptions.updateNotification;
 
@@ -43,13 +50,57 @@ public class LoggedPlayers implements Listener {
         YamlConfiguration configuration = YamlConfiguration.loadConfiguration(playerHolder);
         if (!configuration.isConfigurationSection("logged-names"))
             return;
+        Map<UUID, String> playersToConvert = new HashMap<>();
+        List<String> badFormats = new ArrayList<>();
         for (String key : Objects.requireNonNull(configuration.getConfigurationSection("logged-names")).getKeys(false)) {
-            try {
-                logPlayer(configuration.getString("logged-names." + key), UUID.fromString(key));
-            } catch (IllegalArgumentException e) {
-                Bukkit.getLogger().warning("Could not get uuid of logged player: " + key + " = " + configuration.getString("logged-names." + key));
+            if (configuration.isConfigurationSection("logged-names." + key)) {
+                // old format
+                String name = configuration.getString("logged-names." + key + ".name");
+                String uuid = configuration.getString("logged-names." + key + ".uuid");
+                if (uuid == null || name == null)
+                    continue;
+                try {
+                    logPlayer(name, UUID.fromString(uuid));
+                    playersToConvert.put(UUID.fromString(uuid), name);
+                } catch (IllegalArgumentException ignored) {}
+                badFormats.add(key);
+            } else {
+                // new format
+                try {
+                    logPlayer(configuration.getString("logged-names." + key), UUID.fromString(key));
+                } catch (IllegalArgumentException e) {
+                    Bukkit.getLogger().warning("Could not get uuid of logged player: " + key + " = " + configuration.getString("logged-names." + key));
+                }
             }
         }
+        if (!badFormats.isEmpty() || !playersToConvert.isEmpty()) {
+            // remove bad formatting
+            for (String key : badFormats) {
+                configuration.set("logged-names." + key, null);
+            }
+            // add players with old format to the new format
+            for (Map.Entry<UUID, String> entry : playersToConvert.entrySet()) {
+                if (!configuration.isSet("logged-names." + entry.getKey().toString()))
+                    configuration.set("logged-names." + entry.getKey().toString(), entry.getValue());
+            }
+            // save
+            try {
+                configuration.save(playerHolder);
+            } catch (IOException e) {
+                Bukkit.getLogger().warning("[NotTokensPremium] Could not update loggedplayers.yml!");
+                Bukkit.getLogger().warning(e.toString());
+            }
+        }
+
+        // check if names match up with Bukkit
+        Map<UUID, String> nameUpdates = new HashMap<>();
+        for (Map.Entry<UUID, String> entry : UUIDNameMap.entrySet()) {
+            OfflinePlayer player = Bukkit.getOfflinePlayer(entry.getKey());
+            if (player.getName() != null && !player.getName().equals(entry.getValue())) {
+                nameUpdates.put(entry.getKey(), player.getName());
+            }
+        }
+        UUIDNameMap.putAll(nameUpdates);
 
         new BukkitRunnable(){
             @Override
@@ -59,8 +110,43 @@ public class LoggedPlayers implements Listener {
                 } catch (IOException e) {
                     Bukkit.getLogger().warning("[NotTokensPremium] Error saving logged players!");
                 }
+
+                // check if new players should be logged
+                if (TokenManager.getSQL().isConnected()) {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            Map<UUID, String> loggedPlayers = TokenManager.getData().getLoggedPlayers();
+                            if (UUIDNameMap.size() == loggedPlayers.size()) // No difference
+                                return;
+                            List<UUID> confirmedPlayers = new ArrayList<>();
+                            // check for players on database and not on server
+                            for (Map.Entry<UUID, String> entry : loggedPlayers.entrySet()) {
+                                if (isLogged(entry.getValue(), entry.getKey())) {
+                                    confirmedPlayers.add(entry.getKey());
+                                } else {
+                                    logPlayer(entry.getValue(), entry.getKey());
+                                }
+                            }
+                            // check for players on server and not on database
+                            Map<UUID, String> unLoggedPlayers = new HashMap<>();
+                            for (Map.Entry<UUID, String> entry : UUIDNameMap.entrySet()) {
+                                if (confirmedPlayers.contains(entry.getKey()))
+                                    continue;
+                                unLoggedPlayers.put(entry.getKey(), entry.getValue());
+                            }
+                            TokenManager.getData().logPlayers(unLoggedPlayers);
+
+                            Map<UUID, Double> allTokens = TokenManager.getData().getTopTokens(500);
+                            for (Map.Entry<UUID, Double> entry : allTokens.entrySet()) {
+                                getPlayerName(entry.getKey()); // make sure their name is recorded
+                            }
+
+                        }
+                    }.runTaskAsynchronously(NotTokensPremium.getInstance());
+                }
             }
-        }.runTaskTimer(NotTokensPremium.getInstance(), 20 * 60 * 15 + 10, 20 * 60 * 15);
+        }.runTaskTimer(NotTokensPremium.getInstance(), 20 * 60 * 15 + 10, 20 * 60 * 15); // 15 min
     }
 
     public LoggedPlayers(){}
@@ -71,6 +157,9 @@ public class LoggedPlayers implements Listener {
     public static void logPlayer(String name, UUID uuid){
         nameUUIDMap.put(name, uuid);
         UUIDNameMap.put(uuid, name);
+        if (TokenManager.getSQL().isConnected()) {
+            TokenManager.getData().logPlayer(uuid, name);
+        }
     }
 
     /**
@@ -97,7 +186,33 @@ public class LoggedPlayers implements Listener {
         OfflinePlayer player = Bukkit.getOfflinePlayer(uuid);
         if (player.getName() != null)
             return player.getName();
+        CompletableFuture<String> name = requestPlayerName(uuid);
+        try {
+            if (name.isDone())
+                return name.get();
+        } catch (CancellationException | ExecutionException | InterruptedException ignored) {}
         return uuid.toString();
+    }
+
+    /**
+     * Request a player name from Mojang's API
+     * @param uuid UUID of the player
+     * @return A completable future string of the player's name
+     */
+    private static CompletableFuture<String> requestPlayerName(UUID uuid) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                URL url = new URL("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid);
+                InputStreamReader reader = new InputStreamReader(url.openStream());
+                JsonObject input = NotTokensPremium.serverVersion >= 18 ? JsonParser.parseReader(reader).getAsJsonObject() : new JsonParser().parse(reader).getAsJsonObject();
+                String name = input.get("name").getAsString();
+                reader.close();
+                logPlayer(name, uuid);
+                return name;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     /**

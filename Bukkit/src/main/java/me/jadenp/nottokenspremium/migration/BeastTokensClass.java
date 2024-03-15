@@ -10,8 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 
 public class BeastTokensClass implements MigratablePlugin{
+    private boolean enabled;
     public BeastTokensClass() {
-
+        refreshStatus();
     }
     @Override
     public double getTokens(Player player) {
@@ -38,5 +39,15 @@ public class BeastTokensClass implements MigratablePlugin{
     @Override
     public String getName() {
         return "BeastTokens";
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public void refreshStatus() {
+        enabled = Bukkit.getPluginManager().isPluginEnabled(getName());
     }
 }

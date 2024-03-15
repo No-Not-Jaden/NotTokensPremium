@@ -179,8 +179,22 @@ public class MigrationManager {
      * @param player Online player to check external tokens of
      */
     public static void onJoin(Player player) {
-        if (currentExternalTokenPlugin != null && currentExternalTokenPlugin.isActiveMigration())
-            migratePlayer(player);
+        try {
+            if (currentExternalTokenPlugin != null && currentExternalTokenPlugin.isActiveMigration() && currentExternalTokenPlugin.isEnabled())
+                migratePlayer(player);
+        } catch (NoClassDefFoundError e) {
+            Bukkit.getLogger().warning("[NotTokensPremium] Could not migrate player's tokens. Is the external plugin still enabled?");
+            Bukkit.getLogger().warning("You will have to reload NotTokens to refresh the connection.");
+            currentExternalTokenPlugin.refreshStatus();
+        }
+    }
+
+    /**
+     * Refreshes the status of the current external token plugin
+     */
+    public static void refreshCurrentExternalTokenPlugin(){
+        if (currentExternalTokenPlugin != null)
+            currentExternalTokenPlugin.refreshStatus();
     }
 
     /**

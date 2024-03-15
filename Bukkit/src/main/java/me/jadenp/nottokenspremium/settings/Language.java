@@ -108,11 +108,14 @@ public class Language {
     public static String parse(String text, String replacement, OfflinePlayer player) {
         text = text.replaceAll("\\{player}", Matcher.quoteReplacement(replacement));
         text = text.replaceAll("\\{sender}", Matcher.quoteReplacement(replacement));
-        text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(NumberFormatting.parseCurrency(replacement)) + NumberFormatting.currencySuffix));
+        try {
+            text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(NumberFormatting.parseCurrency(replacement)) + NumberFormatting.currencySuffix));
+        } catch (NumberFormatException ignored) {}
         return parse(text, player);
     }
 
     public static String parse(String text, String replacement, double amount, OfflinePlayer player) {
+        text = text.replaceAll("\\{player}", Matcher.quoteReplacement(replacement));
         text = text.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         text = text.replaceAll("\\{tokens}", Matcher.quoteReplacement(NumberFormatting.currencyPrefix + NumberFormatting.formatNumber(amount) + NumberFormatting.currencySuffix));
         return parse(text, replacement, player);

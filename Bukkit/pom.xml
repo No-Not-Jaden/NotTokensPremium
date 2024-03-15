@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>NotTokensPremium-Bukkit</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -134,7 +134,7 @@
             <artifactId>spigot-api</artifactId>
             <!-- <version>1.20.2-R0.1-SNAPSHOT</version> -->
             <!-- <version>1.8.8-R0.1-SNAPSHOT</version> -->
-            <version>1.20.2-R0.1-SNAPSHOT</version>
+            <version>1.20.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -145,9 +145,9 @@
         </dependency>
         <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.33</version>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>8.3.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.SkriptLang</groupId>

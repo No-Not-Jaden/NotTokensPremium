@@ -12,7 +12,9 @@ import java.util.UUID;
 
 public class TokenManagerClass implements MigratablePlugin{
     private static TokenManager api;
+    private boolean enabled;
     public TokenManagerClass(){
+        refreshStatus();
         registerAPI();
     }
 
@@ -48,6 +50,16 @@ public class TokenManagerClass implements MigratablePlugin{
     @Override
     public String getName() {
         return "TokenManager";
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    @Override
+    public void refreshStatus() {
+        enabled = Bukkit.getPluginManager().isPluginEnabled(getName());
     }
 
     // get the plugin api if it hasn't been retrieved yet

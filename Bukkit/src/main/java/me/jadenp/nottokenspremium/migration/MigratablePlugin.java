@@ -42,5 +42,16 @@ public interface MigratablePlugin {
      */
     String getName();
 
+    /**
+     * Check if the plugin is enabled.
+     * @return True if the external plugin is enabled
+     */
+    boolean isEnabled();
+
+    /**
+     * Checks to see if the plugin is still enabled.
+     */
+    void refreshStatus();
+
 
 }

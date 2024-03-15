@@ -8,6 +8,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.UUID;
 
 public class OldNotTokensAdapter {
@@ -116,6 +117,17 @@ public class OldNotTokensAdapter {
                     Bukkit.getLogger().warning("[NotTokensPremium] Could not get a uuid from: " + token);
                 }
         }
+        // read logged players
+        if (oldTokensHolderConfig.isConfigurationSection("logged-names"))
+            for (String index : Objects.requireNonNull(oldTokensHolderConfig.getConfigurationSection("logged-names")).getKeys(false)) {
+                String name = oldTokensHolderConfig.getString("logged-names." + index + ".name");
+                String uuid = oldTokensHolderConfig.getString("logged-names." + index + ".uuid");
+                if (uuid == null || name == null)
+                    continue;
+                try {
+                    LoggedPlayers.logPlayer(name, UUID.fromString(uuid));
+                } catch (IllegalArgumentException ignored) {}
+            }
         return true;
     }
 

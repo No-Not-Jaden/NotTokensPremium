@@ -3,6 +3,7 @@ package me.jadenp.nottokenspremium.settings;
 import me.jadenp.nottokenspremium.NotTokensPremium;
 import me.jadenp.nottokenspremium.OldNotTokensAdapter;
 import me.jadenp.nottokenspremium.TokenManager;
+import me.jadenp.nottokenspremium.migration.MigrationManager;
 import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -61,5 +62,6 @@ public class ConfigOptions {
         ItemExchange.loadExchange();
         NumberFormatting.setCurrencyOptions(Objects.requireNonNull(config.getConfigurationSection("number-formatting")));
         KillRewards.loadKillRewards();
+        MigrationManager.refreshCurrentExternalTokenPlugin();
     }
 }
