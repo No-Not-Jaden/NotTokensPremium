@@ -82,12 +82,6 @@ public class TokenManager {
         tryToConnect(); // try to connect to database
 
 
-        try {
-            if (!NotTokensPremium.getInstance().firstStart) {
-                SQL.reconnect();
-            }
-        } catch (SQLException ignored) {}
-
         // auto save task
         new BukkitRunnable() {
             @Override
@@ -183,6 +177,18 @@ public class TokenManager {
                     Bukkit.getLogger().info("Cleared up " + rows + " unused rows in the database!");
                 }
                 data.refreshOnlinePlayers();
+                if (!Bukkit.getOnlinePlayers().isEmpty()) {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (TokenManager.isSavingLocally()) {
+                                if (TokenManager.migrateToSQL()) {
+                                    Bukkit.getLogger().info("[NotTokensPremium] Migrated local storage to database.");
+                                }
+                            }
+                        }
+                    }.runTaskLater(NotTokensPremium.getInstance(), 100L);
+                }
             }
         }
         return true;
@@ -298,7 +304,7 @@ public class TokenManager {
      * @return true if a message should be sent to the player
      */
     public static boolean giveTokens(UUID uuid, double amount) {
-        return setTokens(uuid, getTokens(uuid) + amount);
+        return setTokens(uuid, getTokens(uuid), amount);
     }
 
     /**
@@ -322,7 +328,7 @@ public class TokenManager {
                     double refund = requiredItems * ItemExchange.getValue() + amount;
                     if (requiredItems <= ItemExchange.getBalance(player)) {
                         ItemExchange.deposit(player, requiredItems);
-                        return setTokens(uuid, getTokens(uuid) - amount + refund);
+                        return setTokens(uuid, getTokens(uuid),  refund - amount);
                     } else {
                         ItemExchange.deposit(player, ItemExchange.getBalance(player));
                     }
@@ -332,18 +338,30 @@ public class TokenManager {
             }
 
         }
-        return setTokens(uuid, getTokens(uuid) - amount);
+        return setTokens(uuid, getTokens(uuid), -1 * amount);
+    }
+
+    /**
+     * Sets the tokens of a player
+     * @param uuid UUID of player to set the tokens of
+     * @param amount new token balance for the player
+     * @return true if a message should be sent to the player
+     */
+    public static boolean setTokens(UUID uuid, double amount) {
+        double tokens = getTokens(uuid);
+        return setTokens(uuid, tokens, amount - tokens);
     }
 
     /***
      * Sets the tokens of a player.
      * @param uuid UUID of player to set the tokens of
-     * @param amount New amount of tokens
+     * @param currentTokens current tokens of the player
+     * @param change token change
      * @return true if a message should be sent to the player
      */
-    public static boolean setTokens(UUID uuid, double amount) {
-        // change in token balance for the player
-        double currentTokens = getTokens(uuid);
+    public static boolean setTokens(UUID uuid, double currentTokens, double change) {
+
+        double amount = currentTokens + change;
         // make sure the amount isn't below 0 if negative tokens is false
 
         if (!ConfigOptions.negativeTokens && amount < 0)

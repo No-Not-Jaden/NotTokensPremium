@@ -14,6 +14,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -192,7 +193,12 @@ public class Commands implements CommandExecutor, TabCompleter {
                 Objects.requireNonNull(receiver.getPlayer()).sendMessage(Language.parse(Language.prefix + Language.playerReceive, sender.getName(), amount, parser));
             sender.sendMessage(Language.parse(Language.prefix + Language.adminAdd, LoggedPlayers.getPlayerName(receiver.getUniqueId()), amount, parser));
             String senderName = sender instanceof Player ? parser.getName() : "CONSOLE";
-            TransactionLogs.log(senderName + " gave " + amount + " tokens to " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(receiver.getUniqueId())));
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    TransactionLogs.log(senderName + " gave " + amount + " tokens to " + LoggedPlayers.getPlayerName(receiver.getUniqueId()) +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(receiver.getUniqueId())));
+                }
+            }.runTaskLaterAsynchronously(NotTokensPremium.getInstance(), 5);
             return true;
         } else if (args[0].equalsIgnoreCase("remove")) {
             // /token remove (player) (amount)
@@ -351,8 +357,7 @@ public class Commands implements CommandExecutor, TabCompleter {
                 sender.sendMessage(Language.parse(Language.prefix + Language.unknownCommand, parser));
                 return true;
             }
-            ConfigOptions.loadConfigOptions();
-            Language.loadLanguageOptions();
+            ConfigOptions.reloadConfigOptions();
             sender.sendMessage(Language.parse(Language.prefix + ChatColor.GREEN + "Reloaded NotTokensPremium " + NotTokensPremium.getInstance().getDescription().getVersion()));
         } else if (args[0].equalsIgnoreCase("deposit")) {
             // /tokens deposit (amount/all)
@@ -427,6 +432,10 @@ public class Commands implements CommandExecutor, TabCompleter {
             double tokensRemoved = ItemExchange.withdraw(player, amount);
             sender.sendMessage(Language.parse(Language.prefix + Language.deposit.replaceAll("\\{amount}", Matcher.quoteReplacement(NumberFormatting.formatNumber(amount))), tokensRemoved, parser));
             TransactionLogs.log(player.getName() + " withdrew " + amount + " exchange items requiring a total of " + tokensRemoved +" tokens. Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(player.getUniqueId())));
+        } else if (args[0].equalsIgnoreCase("debug") && sender.hasPermission("nottokens.admin")) {
+            NotTokensPremium.debug = !NotTokensPremium.debug;
+            String debugText = NotTokensPremium.debug ? ChatColor.GREEN + "enabled" : ChatColor.RED + "disabled";
+            sender.sendMessage(Language.parse(Language.prefix + ChatColor.YELLOW + "Debug mode is now " + debugText + ChatColor.YELLOW + ".", parser));
         } else {
             OfflinePlayer player = LoggedPlayers.getPlayer(args[0]);
             if (player != null) {

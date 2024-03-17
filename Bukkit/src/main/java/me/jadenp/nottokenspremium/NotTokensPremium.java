@@ -4,7 +4,6 @@ import ch.njol.skript.Skript;
 import ch.njol.skript.SkriptAddon;
 import me.jadenp.nottokenspremium.settings.ConfigOptions;
 import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
-import me.jadenp.nottokenspremium.settings.Language;
 import me.jadenp.nottokenspremium.migration.MigrationManager;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -13,18 +12,17 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * mvn install:install-file -Dfile=C:\Users\jpate\IdeaProjects\mvnrepo\bt-api-3.13.3.jar -DgroupId=me.mraxetv.beasttokens.api -DartifactId=BeastTokensAPI -Dversion=3.13.3 -Dpackaging=jar -DgeneratePom=true
- * SQL player list -
- * migrate tokens -
+ * mvn install:install-file -Dfile=C:\Users\Jaden\IdeaProjects\mvnrepo\bt-api-3.13.3.jar -DgroupId=me.mraxetv.beasttokens.api -DartifactId=BeastTokensAPI -Dversion=3.13.3 -Dpackaging=jar -DgeneratePom=true
  */
 public class NotTokensPremium extends JavaPlugin {
 
 
     private static NotTokensPremium instance;
-    public boolean firstStart = false;
+    public boolean firstStart = true;
     public static boolean latestVersion = true;
     public static int resourceID = 115480;
     public static int serverVersion = 20;
+    public static boolean debug = false;
     public static NotTokensPremium getInstance() {
         return instance;
     }
@@ -55,9 +53,7 @@ public class NotTokensPremium extends JavaPlugin {
 
         // load configurations
         TokenManager.loadTokenManager();
-        ConfigOptions.loadConfigOptions();
-        TokenManager.startAutoConnectTask();
-        Language.loadLanguageOptions();
+        ConfigOptions.reloadConfigOptions();
         LoggedPlayers.loadLoggedPlayers();
         TransactionLogs.loadTransactionLogs();
         MigrationManager.loadConfig();
@@ -120,7 +116,7 @@ public class NotTokensPremium extends JavaPlugin {
             });
         }
 
-        firstStart = true;
+        firstStart = false;
 
         if (ConfigOptions.sendBStats) {
             int pluginId = 21262;

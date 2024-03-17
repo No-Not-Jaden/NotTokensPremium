@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 
+import static me.jadenp.nottokenspremium.NotTokensPremium.debug;
 import static me.jadenp.nottokenspremium.TokenManager.tryToConnect;
 
 public class SQLGetter {
@@ -52,6 +53,9 @@ public class SQLGetter {
                 }
             }
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             Bukkit.getLogger().warning("[NotTokensPremium] Lost connection with database, will try to reconnect.");
             SQL.disconnect();
             if (!tryToConnect()) {
@@ -78,7 +82,20 @@ public class SQLGetter {
                     ");");
             ps.executeUpdate();
         } catch (SQLException e) {
-            Bukkit.getLogger().warning(e.toString());
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
+            Bukkit.getLogger().warning("[NotTokensPremium] Lost connection with database, will try to reconnect.");
+            SQL.disconnect();
+            if (!tryToConnect()) {
+                Bukkit.getScheduler().runTaskLater(NotTokensPremium.getInstance(), () -> {
+                    if (tryToConnect()) {
+                        createTable();
+                    }
+                }, 40L);
+            } else {
+                createLoggedPlayerTable();
+            }
         }
     }
 
@@ -112,6 +129,9 @@ public class SQLGetter {
                 }
             }
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 return getNetworkPlayers();
             }
@@ -145,6 +165,9 @@ public class SQLGetter {
             }
             return loggedPlayers;
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 return getLoggedPlayers();
             }
@@ -175,6 +198,9 @@ public class SQLGetter {
 
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 logPlayers(UUIDNameMap);
             }
@@ -189,6 +215,9 @@ public class SQLGetter {
             ps.setInt(3, 0);
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 logPlayer(uuid, name);
             }
@@ -201,6 +230,9 @@ public class SQLGetter {
             ps.setInt(1, SQL.getServerID());
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 refreshOnlinePlayers();
             }
@@ -216,6 +248,9 @@ public class SQLGetter {
             ps.setInt(2, SQL.getServerID());
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 logout(player);
             }
@@ -231,6 +266,9 @@ public class SQLGetter {
             ps.setInt(4, SQL.getServerID());
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 login(player);
             }
@@ -252,10 +290,13 @@ public class SQLGetter {
             ps.setDouble(3, amount);
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 giveTokens(uuid, amount);
             } else {
-                TokenManager.giveTokens(uuid, amount);
+                Bukkit.getScheduler().runTaskLater(NotTokensPremium.getInstance(), () -> TokenManager.giveTokens(uuid, amount), 20L);
             }
         }
     }
@@ -277,11 +318,14 @@ public class SQLGetter {
                 return tokens;
             }
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 return getTokens(uuid);
             }
         }
-        return TokenManager.getTokens(uuid);
+        return 0;
     }
 
     /**
@@ -298,10 +342,13 @@ public class SQLGetter {
             ps.setDouble(3, amount);
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 removeTokens(uuid, amount);
             } else {
-                TokenManager.removeTokens(uuid, amount);
+                Bukkit.getScheduler().runTaskLater(NotTokensPremium.getInstance(), () -> TokenManager.removeTokens(uuid, amount), 20L);
             }
         }
     }
@@ -319,10 +366,13 @@ public class SQLGetter {
             ps.setDouble(2, amount);
             ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 setTokens(uuid, amount);
             } else {
-                TokenManager.setTokens(uuid, amount);
+                Bukkit.getScheduler().runTaskLater(NotTokensPremium.getInstance(), () -> TokenManager.setTokens(uuid, amount), 20L);
             }
         }
     }
@@ -364,11 +414,14 @@ public class SQLGetter {
             }
             return tokens;
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 return getTopTokens(results);
             }
         }
-        return TokenManager.getTopTokens(results);
+        return new LinkedHashMap<>();
     }
 
     /**
@@ -382,6 +435,9 @@ public class SQLGetter {
             ps.setDouble(1, 0L);
             return ps.executeUpdate();
         } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
             if (reconnect()) {
                 return removeExtraData();
             }

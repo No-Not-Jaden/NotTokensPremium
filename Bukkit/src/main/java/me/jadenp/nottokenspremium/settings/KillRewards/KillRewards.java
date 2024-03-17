@@ -11,6 +11,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -101,7 +102,14 @@ public class KillRewards implements Listener {
             if (TokenManager.giveTokens(event.getEntity().getKiller().getUniqueId(), reward.getAmount())) {
                 event.getEntity().getKiller().sendMessage(Language.parse(Language.prefix + Language.killReward.replaceAll("\\{entity}", Matcher.quoteReplacement(event.getEntityType().toString())), reward.getAmount(), event.getEntity().getKiller()));
             }
-            TransactionLogs.log(event.getEntity().getKiller().getName() + " received " + reward.getAmount() + " tokens for killing " + event.getEntityType() +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(event.getEntity().getKiller().getUniqueId())));
+            KillReward finalReward = reward;
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    TransactionLogs.log(event.getEntity().getKiller().getName() + " received " + finalReward.getAmount() + " tokens for killing " + event.getEntityType() +". Balance: " +  NumberFormatting.formatNumber(TokenManager.getTokens(event.getEntity().getKiller().getUniqueId())));
+                }
+            }.runTaskLaterAsynchronously(NotTokensPremium.getInstance(), 5);
+
         }
     }
 }

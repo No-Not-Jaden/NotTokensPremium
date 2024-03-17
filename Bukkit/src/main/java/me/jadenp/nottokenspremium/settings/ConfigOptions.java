@@ -8,6 +8,7 @@ import me.jadenp.nottokenspremium.settings.KillRewards.KillRewards;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +21,7 @@ public class ConfigOptions {
     public static boolean updateNotification;
     public static boolean sendBStats;
 
-    public static void loadConfigOptions(){
+    public static void reloadConfigOptions(){
         NotTokensPremium.getInstance().saveDefaultConfig();
         NotTokensPremium.getInstance().reloadConfig();
         FileConfiguration config = NotTokensPremium.getInstance().getConfig();
@@ -63,5 +64,14 @@ public class ConfigOptions {
         NumberFormatting.setCurrencyOptions(Objects.requireNonNull(config.getConfigurationSection("number-formatting")));
         KillRewards.loadKillRewards();
         MigrationManager.refreshCurrentExternalTokenPlugin();
+        TokenManager.startAutoConnectTask();
+        Language.loadLanguageOptions();
+
+        try {
+            if (!NotTokensPremium.getInstance().firstStart) {
+                TokenManager.getSQL().reconnect();
+            }
+        } catch (SQLException ignored) {}
+
     }
 }

@@ -98,9 +98,11 @@ public class LoggedPlayers implements Listener {
             OfflinePlayer player = Bukkit.getOfflinePlayer(entry.getKey());
             if (player.getName() != null && !player.getName().equals(entry.getValue())) {
                 nameUpdates.put(entry.getKey(), player.getName());
+                nameUUIDMap.remove(entry.getValue());
             }
         }
         UUIDNameMap.putAll(nameUpdates);
+        nameUpdates.forEach((uuid, str) -> nameUUIDMap.put(str, uuid));
 
         new BukkitRunnable(){
             @Override
@@ -285,7 +287,7 @@ public class LoggedPlayers implements Listener {
                     public void run() {
                         if (TokenManager.isSavingLocally()) {
                             if (TokenManager.migrateToSQL()) {
-                                Bukkit.getLogger().info("[NotTokensPremium] Migrating local storage to database.");
+                                Bukkit.getLogger().info("[NotTokensPremium] Migrated local storage to database.");
                             }
                         }
                     }
