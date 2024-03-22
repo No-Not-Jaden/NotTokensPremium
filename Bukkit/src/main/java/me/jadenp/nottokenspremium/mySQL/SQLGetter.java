@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 
+import javax.annotation.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -173,6 +174,33 @@ public class SQLGetter {
             }
         }
         return new HashMap<>();
+    }
+
+    /**
+     * Get the uuid and name of a logged player
+     * @param name Name of the player (not case-sensitive)
+     * @return The UUID and name of the player, or null if the player hasn't been logged.
+     * If the array is not null, the length will be 2 with the uuid and name inside.
+     */
+    public @Nullable String[] getLoggedPlayer(String name) {
+        try {
+            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid, name FROM token_players WHERE UPPER(name) = UPPER(?);");
+            ps.setString(1, name);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                String uuid = rs.getString("uuid");
+                String realName = rs.getString("name");
+                return new String[]{uuid,realName};
+            }
+        } catch (SQLException e) {
+            if (debug) {
+                Bukkit.getLogger().warning(e.toString());
+            }
+            if (reconnect()) {
+                return getLoggedPlayer(name);
+            }
+        }
+        return null;
     }
 
     /**

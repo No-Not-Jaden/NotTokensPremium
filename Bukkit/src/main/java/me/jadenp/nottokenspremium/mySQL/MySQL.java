@@ -19,6 +19,7 @@ public class MySQL {
     private boolean useSSL;
     private boolean migrateLocalData;
     private int serverID;
+    private boolean automaticallyDetectProxy;
 
     public MySQL(){
         readConfig();

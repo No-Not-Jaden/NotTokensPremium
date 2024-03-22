@@ -229,6 +229,17 @@ public class LoggedPlayers implements Listener {
             if (entry.getKey().equalsIgnoreCase(name))
                 return Bukkit.getOfflinePlayer(entry.getValue());
         }
+        if (TokenManager.getSQL().isConnected()) {
+            String[] playerInfo = TokenManager.getData().getLoggedPlayer(name);
+            if (playerInfo != null) {
+                String realName = playerInfo[1];
+                try {
+                    UUID uuid = UUID.fromString(playerInfo[0]);
+                    logPlayer(realName, uuid);
+                    return Bukkit.getOfflinePlayer(uuid);
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
         return Bukkit.getPlayer(name);
     }
 
