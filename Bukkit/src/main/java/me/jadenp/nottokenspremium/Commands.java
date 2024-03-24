@@ -485,9 +485,9 @@ public class Commands implements CommandExecutor, TabCompleter {
             }
         } else if (args.length == 2) {
             if (sender.hasPermission("nottokens.transfer") && args[0].equalsIgnoreCase("transfer"))
-                tab.addAll(LoggedPlayers.getOnlinePlayerNames());
+                LoggedPlayers.getOnlinePlayerNames().stream().filter(Objects::nonNull).forEach(tab::add);
             if (sender.hasPermission("nottokens.edit") && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("remove")))
-                tab.addAll(LoggedPlayers.getOnlinePlayerNames());
+                LoggedPlayers.getOnlinePlayerNames().stream().filter(Objects::nonNull).forEach(tab::add);
             if (sender instanceof Player && sender.hasPermission("nottokens.exchange") && ItemExchange.enabled && (args[0].equalsIgnoreCase("deposit") || args[0].equalsIgnoreCase("withdraw"))) {
                 tab.add("all");
             }
@@ -513,10 +513,10 @@ public class Commands implements CommandExecutor, TabCompleter {
         String typed = args[args.length-1];
         tab.removeIf(test -> test.toLowerCase(Locale.ROOT).indexOf(typed.toLowerCase(Locale.ROOT)) != 0);
         if (args.length == 1 && tab.isEmpty() && sender.hasPermission("nottokens.viewother")) {
-            tab.addAll(LoggedPlayers.getAllPlayerNames());
+            LoggedPlayers.getAllPlayerNames().stream().filter(Objects::nonNull).forEach(tab::add);
         }
         if (args.length == 2 && tab.isEmpty() && (args[0].equalsIgnoreCase("give") || args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("remove")))
-            tab.addAll(LoggedPlayers.getAllPlayerNames());
+            LoggedPlayers.getAllPlayerNames().stream().filter(Objects::nonNull).forEach(tab::add);
         tab.removeIf(test -> test.toLowerCase(Locale.ROOT).indexOf(typed.toLowerCase(Locale.ROOT)) != 0);
         Collections.sort(tab);
         return tab;

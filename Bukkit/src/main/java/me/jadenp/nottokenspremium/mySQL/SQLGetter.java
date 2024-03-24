@@ -116,12 +116,16 @@ public class SQLGetter {
     private List<OfflinePlayer> getNetworkPlayers() {
         List<OfflinePlayer> networkPlayers = new ArrayList<>();
         try {
-            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid FROM token_players WHERE id != 0;");
+            PreparedStatement ps = SQL.getConnection().prepareStatement("SELECT uuid, name FROM token_players WHERE id != 0;");
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 String uuid = rs.getString("uuid");
+                String name = rs.getString("name");
                 try {
-                    networkPlayers.add(Bukkit.getOfflinePlayer(UUID.fromString(uuid)));
+                    UUID uuid1 = UUID.fromString(uuid);
+                    networkPlayers.add(Bukkit.getOfflinePlayer(uuid1));
+                    if (LoggedPlayers.isLogged(name, uuid1))
+                        LoggedPlayers.logPlayer(name, uuid1);
                 } catch (IllegalArgumentException e) {
                     Bukkit.getLogger().warning("[NotTokensPremium] Removing invalid UUID on database: " + uuid);
                     PreparedStatement ps1 = SQL.getConnection().prepareStatement("DELETE FROM token_players WHERE uuid = ?;");

@@ -339,10 +339,10 @@ public class LoggedPlayers implements Listener {
      */
     public static void updateOnlinePlayers() {
         onlinePlayers.clear();
-        if (!(!Bukkit.getOnlinePlayers().isEmpty() && ProxyMessaging.requestPlayerList()))
+        if (!(!Bukkit.getOnlinePlayers().isEmpty() && ProxyMessaging.hasConnectedBefore() && ProxyMessaging.requestPlayerList()))
             receiveNetworkPlayers(new ArrayList<>());
         if (TokenManager.getSQL().isConnected())
-            TokenManager.getData().getOnlinePlayers().forEach(player -> onlinePlayers.add(player.getName()));
+            TokenManager.getData().getOnlinePlayers().forEach(player -> onlinePlayers.add(getPlayerName(player.getUniqueId())));
     }
 
     /**
@@ -357,7 +357,7 @@ public class LoggedPlayers implements Listener {
     }
 
     public static List<String> getAllPlayerNames() {
-        if (!Bukkit.getOnlinePlayers().isEmpty() && System.currentTimeMillis() - lastPlayerRequest > 15000) {
+        if (System.currentTimeMillis() - lastPlayerRequest > 15000) {
             updateOnlinePlayers();
             lastPlayerRequest = System.currentTimeMillis();
         }
