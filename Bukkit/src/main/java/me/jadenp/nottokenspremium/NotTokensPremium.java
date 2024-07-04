@@ -58,7 +58,7 @@ public class NotTokensPremium extends JavaPlugin {
         TransactionLogs.loadTransactionLogs();
         MigrationManager.loadConfig();
 
-
+        // register command and event classes
         Objects.requireNonNull(Bukkit.getPluginCommand("nottokens")).setExecutor(new Commands());
         Bukkit.getPluginManager().registerEvents(new LoggedPlayers(), this);
         Bukkit.getPluginManager().registerEvents(new KillRewards(), this);
